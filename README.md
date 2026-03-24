@@ -39,3 +39,7 @@ platform-idp/
 - [Observability Standards](docs/OBSERVABILITY-STANDARDS.md)
 - [Production Promotion Policy](docs/PROD-PROMOTION-POLICY.md)
 - [Security/Ops Runbook](docs/SECURITY-OPS-RUNBOOK.md)
+- [Onboarding in 30 Minutes](docs/ONBOARDING-30-MINUTES.md)
+- [Pilot Rollout Checklist](docs/PILOT-ROLLOUT-CHECKLIST.md)
+- [GA Readiness Checklist](docs/GA-READINESS-CHECKLIST.md)
+- [Launch Decision Form](docs/LAUNCH-DECISION.md)

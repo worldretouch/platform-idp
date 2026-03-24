@@ -40,3 +40,7 @@ Phase 5 — Onboarding + Launch
 Onboarding guide 30 phút (CLI + Backstage).
 Dry-run với team pilot.
 Checklist GA “no DevOps ticket for standard path”.
+Progress:
+- Added `docs/ONBOARDING-30-MINUTES.md`.
+- Added pilot checklist for 2 teams in `docs/PILOT-ROLLOUT-CHECKLIST.md`.
+- Added launch gate checklist in `docs/GA-READINESS-CHECKLIST.md`.
