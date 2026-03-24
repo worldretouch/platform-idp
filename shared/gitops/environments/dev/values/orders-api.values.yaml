@@ -1,0 +1,22 @@
+service:
+  name: orders-api
+  port: 3000
+  replicas: 2
+
+image:
+  repository: ghcr.io/myorg
+  tag: "dev-sha-REPLACE_ME"
+  pullPolicy: IfNotPresent
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+env:
+  APP_ENV: development
+  LOG_LEVEL: info
+
+existingSecret: orders-api-dev-secrets
+

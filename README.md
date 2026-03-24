@@ -18,7 +18,7 @@ platform-idp/
 ├── shared/
 │   ├── helm/                # Reusable Helm chart
 │   ├── ci/                  # Reusable CI templates
-│   └── docs/                # Shared documentation
+│   └── gitops/              # ArgoCD GitOps skeleton for env repos
 └── docs/                    # Platform-level docs
 ```
 
@@ -26,7 +26,7 @@ platform-idp/
 
 1. **Create a new service**: Copy `base-template/` + one `starters/<runtime>/` into your service repo
 2. **Or use scaffolding**: Run `make scaffold RUNTIME=go SERVICE_NAME=my-service`
-3. **Deploy**: Use shared Helm chart + Argo CD (future)
+3. **Deploy**: Use shared Helm chart + ArgoCD GitOps skeleton
 4. **Initialize locally**: `cd ../my-service && make init && make run`
 
 ## Conventions
@@ -34,3 +34,4 @@ platform-idp/
 - [Service Contract](docs/SERVICE-CONTRACT.md)
 - [Naming Conventions](docs/NAMING-CONVENTIONS.md)
 - [Phase 1 Plan](docs/PHASE1-IMPLEMENTATION.md)
+- [GitOps Workflow](docs/GITOPS-WORKFLOW.md)

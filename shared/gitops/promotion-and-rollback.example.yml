@@ -1,0 +1,99 @@
+name: Promote Or Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "promote or rollback"
+        required: true
+        type: choice
+        options:
+          - promote
+          - rollback
+      service_name:
+        description: "service name (e.g. orders-api)"
+        required: true
+        type: string
+      target_env:
+        description: "dev | staging | prod"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image_tag:
+        description: "immutable image tag (required for promote)"
+        required: false
+        type: string
+      rollback_to_tag:
+        description: "previous image tag (required for rollback)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-env-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout environment repo
+        uses: actions/checkout@v4
+        with:
+          repository: myorg/platform-env
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          path: platform-env
+
+      - name: Update values image tag
+        run: |
+          set -eu
+          FILE="platform-env/environments/${{ inputs.target_env }}/values/${{ inputs.service_name }}.values.yaml"
+          if [ ! -f "$FILE" ]; then
+            echo "Missing values file: $FILE"
+            exit 1
+          fi
+
+          if [ "${{ inputs.action }}" = "promote" ]; then
+            if [ -z "${{ inputs.image_tag }}" ]; then
+              echo "image_tag is required for promote"
+              exit 1
+            fi
+            NEW_TAG="${{ inputs.image_tag }}"
+          else
+            if [ -z "${{ inputs.rollback_to_tag }}" ]; then
+              echo "rollback_to_tag is required for rollback"
+              exit 1
+            fi
+            NEW_TAG="${{ inputs.rollback_to_tag }}"
+          fi
+
+          python3 - <<'PY'
+          import re
+          import os
+          p = os.environ["FILE"]
+          tag = os.environ["NEW_TAG"]
+          data = open(p, encoding="utf-8").read()
+          data, n = re.subn(r'(^\s*tag:\s*).+$', r'\1"' + tag + '"', data, flags=re.M)
+          if n == 0:
+            raise SystemExit("Could not find image tag line")
+          open(p, "w", encoding="utf-8").write(data)
+          PY
+        env:
+          FILE: platform-env/environments/${{ inputs.target_env }}/values/${{ inputs.service_name }}.values.yaml
+          NEW_TAG: ${{ inputs.action == 'promote' && inputs.image_tag || inputs.rollback_to_tag }}
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          path: platform-env
+          commit-message: "gitops: ${{ inputs.action }} ${{ inputs.service_name }} to ${{ inputs.target_env }}"
+          branch: "gitops/${{ inputs.action }}/${{ inputs.service_name }}-${{ inputs.target_env }}"
+          title: "gitops: ${{ inputs.action }} ${{ inputs.service_name }} to ${{ inputs.target_env }}"
+          body: |
+            Action: `${{ inputs.action }}`
+            Service: `${{ inputs.service_name }}`
+            Environment: `${{ inputs.target_env }}`
+            Tag: `${{ inputs.action == 'promote' && inputs.image_tag || inputs.rollback_to_tag }}`
