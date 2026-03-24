@@ -1,0 +1,18 @@
+# Example: Copy to your service repo as .github/workflows/ci.yml
+# This workflow calls the platform reusable workflow
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  platform-ci:
+    uses: ./.github/workflows/platform-service.yml
+    # Or if in separate repo: myorg/platform-idp/.github/workflows/platform-service.yml@main
+    with:
+      service_name: orders-api
+      runtime: go

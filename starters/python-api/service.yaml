@@ -1,0 +1,11 @@
+service_name: python-api
+runtime: python
+owner: platform-team
+domain: platform
+description: Python API starter template
+expose_http: true
+health_path: /health/ready
+dependencies:
+  database: true
+  cache: true
+  broker: false

@@ -1,0 +1,50 @@
+# Platform Service — Default values
+# Override per service
+
+service:
+  name: ""           # required, e.g. orders-api
+  port: 3000
+  replicas: 2
+
+image:
+  repository: ghcr.io/myorg
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+health:
+  livenessPath: /health/live
+  readinessPath: /health/ready
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+env:
+  APP_ENV: production
+  LOG_LEVEL: info
+
+# Secrets from K8s Secret (mount as env)
+existingSecret: ""   # e.g. orders-api-secrets
+
+# Ingress (optional)
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: orders-api.example.com
+      paths:
+        - path: /
+          pathType: Prefix

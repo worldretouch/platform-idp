@@ -1,0 +1,11 @@
+service_name: node-api
+runtime: node
+owner: platform-team
+domain: platform
+description: Node.js API starter template
+expose_http: true
+health_path: /health/ready
+dependencies:
+  database: true
+  cache: true
+  broker: false

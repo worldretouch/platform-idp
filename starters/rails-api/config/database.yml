@@ -1,0 +1,16 @@
+# Platform contract: DATABASE_URL
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  url: <%= ENV["DATABASE_URL"] %>
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] || "postgres://localhost:5432/platform_api_test" %>
+
+production:
+  <<: *default

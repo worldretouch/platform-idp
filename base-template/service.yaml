@@ -1,0 +1,41 @@
+# Service metadata — used by Backstage, scaffolding, platform automation
+# See docs/SERVICE-YAML-SCHEMA.md for full schema
+
+service_name: orders-api
+runtime: go
+owner: platform-team
+domain: orders
+
+description: |
+  API service for order management.
+
+expose_http: true
+health_path: /health/ready
+
+dependencies:
+  database: true
+  cache: true
+  broker: false
+
+deployment:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    min_replicas: 2
+    max_replicas: 10
+    target_cpu_percent: 70
+
+observability:
+  metrics: true
+  tracing: true
+  log_format: json
+
+repository:
+  url: https://github.com/myorg/orders-api
+  main_branch: main

@@ -1,0 +1,11 @@
+service_name: go-api
+runtime: go
+owner: platform-team
+domain: platform
+description: Go API starter template
+expose_http: true
+health_path: /health/ready
+dependencies:
+  database: true
+  cache: true
+  broker: false

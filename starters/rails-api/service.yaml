@@ -1,0 +1,11 @@
+service_name: rails-api
+runtime: rails
+owner: platform-team
+domain: platform
+description: Rails API starter template
+expose_http: true
+health_path: /health/ready
+dependencies:
+  database: true
+  cache: true
+  broker: false
