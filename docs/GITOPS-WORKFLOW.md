@@ -64,6 +64,18 @@ This document defines the deployment flow for platform services using ArgoCD + G
   - `main-latest`
   - `prod-latest`
 
+## Signature verify gate for prod
+
+- Before production promotion, verify container signature with cosign.
+- Template example:
+  - `shared/gitops/promotion-and-rollback.example.yml`
+- Enforced production pipeline:
+  - `shared/gitops/prod-promotion.yml`
+- Expected flow:
+  1. reusable CI publishes image
+  2. reusable CI signs image keylessly (OIDC)
+  3. production promotion workflow verifies signature before opening PR
+
 ## Dev update automation
 
 - Reusable workflow `shared/ci/.github/workflows/platform-service.yml` can auto-open dev update PR after publish.

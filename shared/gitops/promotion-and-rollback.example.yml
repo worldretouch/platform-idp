@@ -30,17 +30,40 @@ on:
         description: "previous image tag (required for rollback)"
         required: false
         type: string
+      image_repository:
+        description: "image repository, e.g. ghcr.io/myorg/orders-api"
+        required: false
+        default: "ghcr.io/myorg/orders-api"
+        type: string
 
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   update-env-repo:
     runs-on: ubuntu-latest
     steps:
+      - name: Install cosign
+        if: inputs.action == 'promote' && inputs.target_env == 'prod'
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
+      - name: Verify image signature before prod promotion
+        if: inputs.action == 'promote' && inputs.target_env == 'prod'
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -eu
+          if [ -z "${{ inputs.image_tag }}" ]; then
+            echo "image_tag is required for promote"
+            exit 1
+          fi
+          IMAGE_REF="${{ inputs.image_repository }}:${{ inputs.image_tag }}"
+          cosign verify "${IMAGE_REF}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
       - name: Checkout environment repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: myorg/platform-env
           token: ${{ secrets.ENV_REPO_TOKEN }}
@@ -85,7 +108,7 @@ jobs:
           NEW_TAG: ${{ inputs.action == 'promote' && inputs.image_tag || inputs.rollback_to_tag }}
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
         with:
           token: ${{ secrets.ENV_REPO_TOKEN }}
           path: platform-env

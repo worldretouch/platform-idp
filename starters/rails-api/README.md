@@ -38,3 +38,22 @@ Uses `ENV` directly. Database URL from `DATABASE_URL`, Redis from `REDIS_URL`.
 
 - `GET /health/live` — Rack process alive
 - `GET /health/ready` — DB + Redis connectivity (if configured)
+
+## Observability
+
+`config/application.rb` defines log tags for correlation:
+
+- `:request_id`
+- trace id tag from `X-Trace-Id` header (fallback to request id)
+
+Example request:
+
+```bash
+curl -H "X-Request-Id: req-123" -H "X-Trace-Id: trace-456" http://localhost:3000/health/live
+```
+
+Run observability test:
+
+```bash
+bundle exec rspec spec/requests/observability_spec.rb
+```

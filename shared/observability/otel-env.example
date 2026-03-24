@@ -1,0 +1,13 @@
+# OpenTelemetry environment baseline
+# Copy into service env/config and tune per environment.
+
+OTEL_SERVICE_NAME=orders-api
+OTEL_RESOURCE_ATTRIBUTES=service.namespace=platform,deployment.environment=development
+OTEL_TRACES_EXPORTER=otlp
+OTEL_METRICS_EXPORTER=otlp
+OTEL_LOGS_EXPORTER=otlp
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318
+OTEL_TRACES_SAMPLER=parentbased_traceidratio
+OTEL_TRACES_SAMPLER_ARG=0.1
+

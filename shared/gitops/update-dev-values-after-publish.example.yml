@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout environment repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: __ENV_GITOPS_REPO__
           token: ${{ secrets.ENV_REPO_TOKEN }}
@@ -52,7 +52,7 @@ jobs:
           NEW_TAG: ${{ inputs.image_tag }}
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
         with:
           token: ${{ secrets.ENV_REPO_TOKEN }}
           path: platform-env

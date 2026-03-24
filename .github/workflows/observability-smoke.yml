@@ -1,0 +1,58 @@
+name: Observability Smoke Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  node-observability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+      - name: Run Node observability test
+        run: |
+          npm ci
+          npx jest src/observability.test.ts
+        working-directory: starters/node-api
+
+  go-observability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - name: Run Go observability test
+        run: go test ./internal/server -run TestRequestLogFields_ContainsTraceAndRequestID
+        working-directory: starters/go-api
+
+  python-observability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Run Python observability test
+        run: |
+          pip install --disable-pip-version-check -r requirements-dev.txt
+          pytest tests/test_observability.py
+        working-directory: starters/python-api
+
+  rails-observability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: starters/rails-api
+      - name: Run Rails observability test
+        run: bundle exec rspec spec/requests/observability_spec.rb
+        working-directory: starters/rails-api

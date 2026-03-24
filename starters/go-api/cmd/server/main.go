@@ -23,7 +23,8 @@ func main() {
 	mux.HandleFunc("/health/live", healthHandler.Live)
 	mux.HandleFunc("/health/ready", healthHandler.Ready)
 
-	srv := server.New(":"+strconv.Itoa(cfg.Port), mux)
+	handler := server.ObservabilityMiddleware(mux)
+	srv := server.New(":"+strconv.Itoa(cfg.Port), handler)
 	// TODO: wire DB/Redis when DATABASE_URL/REDIS_URL set
 
 	go func() {

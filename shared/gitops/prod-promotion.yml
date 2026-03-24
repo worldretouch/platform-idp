@@ -1,0 +1,83 @@
+name: Production Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "service name (e.g. orders-api)"
+        required: true
+        type: string
+      image_repository:
+        description: "image repository, e.g. ghcr.io/myorg/orders-api"
+        required: true
+        type: string
+      image_tag:
+        description: "immutable image tag (sha)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  verify-and-promote-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
+
+      - name: Verify image signature
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -eu
+          IMAGE_REF="${{ inputs.image_repository }}:${{ inputs.image_tag }}"
+          cosign verify "${IMAGE_REF}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Checkout environment repo
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: myorg/platform-env
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          path: platform-env
+
+      - name: Update prod values image tag
+        run: |
+          set -eu
+          FILE="platform-env/environments/prod/values/${{ inputs.service_name }}.values.yaml"
+          if [ ! -f "$FILE" ]; then
+            echo "Missing values file: $FILE"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          import re
+          file_path = os.environ["FILE"]
+          new_tag = os.environ["NEW_TAG"]
+          data = open(file_path, encoding="utf-8").read()
+          data, n = re.subn(r'(^\s*tag:\s*).+$', r'\1"' + new_tag + '"', data, flags=re.M)
+          if n == 0:
+            raise SystemExit("Could not find image tag line")
+          open(file_path, "w", encoding="utf-8").write(data)
+          PY
+        env:
+          FILE: platform-env/environments/prod/values/${{ inputs.service_name }}.values.yaml
+          NEW_TAG: ${{ inputs.image_tag }}
+
+      - name: Create production promotion PR
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
+        with:
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          path: platform-env
+          commit-message: "gitops: promote ${{ inputs.service_name }} to prod (${{ inputs.image_tag }})"
+          branch: "gitops/prod/${{ inputs.service_name }}-${{ inputs.image_tag }}"
+          title: "gitops: promote ${{ inputs.service_name }} to prod"
+          body: |
+            Production promotion PR with signature verification gate.
+
+            Service: `${{ inputs.service_name }}`
+            Environment: `prod`
+            Image: `${{ inputs.image_repository }}:${{ inputs.image_tag }}`

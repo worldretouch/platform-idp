@@ -26,6 +26,16 @@ Starter có logging/metrics/tracing mặc định (otel-friendly).
 Dashboard/alert baseline theo service contract.
 SBOM + signing/attestation trong CI.
 Policy chặn image/tag/manifests không đạt chuẩn.
+Progress:
+- Added shared observability baseline docs/templates.
+- Added SBOM generation in reusable CI publish job.
+- Added cosign signing in reusable CI and verify gate before prod promotion.
+- Wired trace_id/request_id logging into all 4 runtime starters.
+- Added CI policy requiring observability test coverage for trace_id/request_id.
+- Added production promotion workflow with mandatory cosign verify gate.
+- Pinned GitHub Action references to commit SHAs in core workflows.
+- Added runtime parity policy checker and CI gate.
+- Added production promotion policy and security/ops runbook docs.
 Phase 5 — Onboarding + Launch
 Onboarding guide 30 phút (CLI + Backstage).
 Dry-run với team pilot.

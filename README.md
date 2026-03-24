@@ -18,7 +18,8 @@ platform-idp/
 ├── shared/
 │   ├── helm/                # Reusable Helm chart
 │   ├── ci/                  # Reusable CI templates
-│   └── gitops/              # ArgoCD GitOps skeleton for env repos
+│   ├── gitops/              # ArgoCD GitOps skeleton for env repos
+│   └── observability/       # Logs/metrics/tracing baseline
 └── docs/                    # Platform-level docs
 ```
 
@@ -35,3 +36,6 @@ platform-idp/
 - [Naming Conventions](docs/NAMING-CONVENTIONS.md)
 - [Phase 1 Plan](docs/PHASE1-IMPLEMENTATION.md)
 - [GitOps Workflow](docs/GITOPS-WORKFLOW.md)
+- [Observability Standards](docs/OBSERVABILITY-STANDARDS.md)
+- [Production Promotion Policy](docs/PROD-PROMOTION-POLICY.md)
+- [Security/Ops Runbook](docs/SECURITY-OPS-RUNBOOK.md)
