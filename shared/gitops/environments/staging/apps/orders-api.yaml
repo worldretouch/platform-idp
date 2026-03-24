@@ -2,21 +2,21 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: orders-api-staging
-  namespace: argocd
+  namespace: __ARGOCD_NAMESPACE__
 spec:
   project: platform-services
   sources:
-    - repoURL: https://github.com/myorg/platform-idp.git
+    - repoURL: __PLATFORM_TEMPLATE_REPO_URL__
       targetRevision: main
       path: shared/helm/platform-service
       helm:
         valueFiles:
           - $values/environments/staging/values/orders-api.values.yaml
-    - repoURL: https://github.com/myorg/platform-env.git
+    - repoURL: __PLATFORM_ENV_REPO_URL__
       targetRevision: main
       ref: values
   destination:
-    server: https://kubernetes.default.svc
+    server: __CLUSTER_API_SERVER__
     namespace: platform-staging
   syncPolicy:
     automated:

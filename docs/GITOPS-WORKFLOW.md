@@ -47,10 +47,29 @@ This document defines the deployment flow for platform services using ArgoCD + G
 
 ## Bootstrap steps
 
-1. Copy `shared/gitops/` to your environment repo.
+1. Run:
+   - `bash shared/gitops/bootstrap-env-repo.sh --target-dir ../platform-env --env-repo-url <env-repo-url> --template-repo-url <template-repo-url>`
+   - Optional preview: add `--dry-run`
 2. Apply:
    - `argocd/project-platform-services.yaml`
    - `argocd/root-app.yaml`
-3. Update all `repoURL` placeholders to your org repositories.
-4. Add service-specific app manifests and values files.
+3. Add service-specific app manifests and values files.
+
+## Production tag policy
+
+- CI enforces that production values files never use `image.tag: latest`.
+- CI enforces that production values tags are SHA-like (`sha-<hex>` or `<hex>`).
+- Disallowed tags in prod values:
+  - `latest`
+  - `main-latest`
+  - `prod-latest`
+
+## Dev update automation
+
+- Reusable workflow `shared/ci/.github/workflows/platform-service.yml` can auto-open dev update PR after publish.
+- To enable in a service repo workflow call:
+  - set input: `env_repo: myorg/platform-env`
+  - set secret: `env_repo_token` (PAT/app token with write access to env repo)
+- Fallback/manual template remains available:
+  - `shared/gitops/update-dev-values-after-publish.example.yml`
 

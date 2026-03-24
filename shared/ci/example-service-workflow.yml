@@ -16,3 +16,6 @@ jobs:
     with:
       service_name: orders-api
       runtime: go
+      env_repo: myorg/platform-env
+    secrets:
+      env_repo_token: ${{ secrets.ENV_REPO_TOKEN }}

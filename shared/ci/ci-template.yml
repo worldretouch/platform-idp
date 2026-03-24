@@ -27,6 +27,8 @@ jobs:
         run: pip install --disable-pip-version-check pyyaml jsonschema
       - name: Validate service.yaml
         run: python shared/ci/validate-service-yaml.py
+      - name: Enforce prod image tag policy
+        run: python shared/ci/check-prod-image-tags.py
 
   lint:
     needs: [validate-contract]

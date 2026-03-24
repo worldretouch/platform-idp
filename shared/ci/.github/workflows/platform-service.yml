@@ -13,8 +13,14 @@ on:
         required: true
         type: string
         default: go
+      env_repo:
+        required: false
+        type: string
+        default: ""
     secrets:
       registry_token:
+        required: false
+      env_repo_token:
         required: false
 
 permissions:
@@ -35,6 +41,8 @@ jobs:
         run: pip install --disable-pip-version-check pyyaml jsonschema
       - name: Validate service.yaml
         run: python shared/ci/validate-service-yaml.py
+      - name: Enforce prod image tag policy
+        run: python shared/ci/check-prod-image-tags.py
 
   lint:
     needs: [validate-contract]
@@ -108,3 +116,56 @@ jobs:
           docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
           docker tag ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
           docker push ghcr.io/${{ github.repository }}:latest
+
+  update-dev-values:
+    needs: [publish]
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && inputs.env_repo != '' && secrets.env_repo_token != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout environment repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.env_repo }}
+          token: ${{ secrets.env_repo_token }}
+          path: platform-env
+
+      - name: Update dev values image tag
+        run: |
+          set -eu
+          FILE="platform-env/environments/dev/values/${{ inputs.service_name }}.values.yaml"
+          if [ ! -f "$FILE" ]; then
+            echo "Missing values file: $FILE"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          import re
+          file_path = os.environ["FILE"]
+          new_tag = os.environ["NEW_TAG"]
+          data = open(file_path, encoding="utf-8").read()
+          data, n = re.subn(r'(^\s*tag:\s*).+$', r'\1"' + new_tag + '"', data, flags=re.M)
+          if n == 0:
+            raise SystemExit("Could not find image tag line")
+          open(file_path, "w", encoding="utf-8").write(data)
+          PY
+        env:
+          FILE: platform-env/environments/dev/values/${{ inputs.service_name }}.values.yaml
+          NEW_TAG: ${{ github.sha }}
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.env_repo_token }}
+          path: platform-env
+          commit-message: "gitops: update dev image for ${{ inputs.service_name }} to ${{ github.sha }}"
+          branch: "gitops/dev/${{ inputs.service_name }}-${{ github.sha }}"
+          title: "gitops: update dev image for ${{ inputs.service_name }}"
+          body: |
+            Automated dev promotion PR from platform reusable workflow.
+
+            Service: `${{ inputs.service_name }}`
+            Environment: `dev`
+            Image tag: `${{ github.sha }}`

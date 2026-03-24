@@ -2,18 +2,18 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: platform-root
-  namespace: argocd
+  namespace: __ARGOCD_NAMESPACE__
 spec:
   project: platform-services
   source:
-    repoURL: https://github.com/myorg/platform-env.git
+    repoURL: __PLATFORM_ENV_REPO_URL__
     targetRevision: main
     path: environments
     directory:
       recurse: true
   destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
+    server: __CLUSTER_API_SERVER__
+    namespace: __ARGOCD_NAMESPACE__
   syncPolicy:
     automated:
       prune: true

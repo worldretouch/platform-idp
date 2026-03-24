@@ -1,0 +1,67 @@
+name: Update Dev Values After Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "service name (e.g. orders-api)"
+        required: true
+        type: string
+      image_tag:
+        description: "immutable image tag (usually git sha)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-dev-promotion-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout environment repo
+        uses: actions/checkout@v4
+        with:
+          repository: __ENV_GITOPS_REPO__
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          path: platform-env
+
+      - name: Update dev values image tag
+        run: |
+          set -eu
+          FILE="platform-env/environments/dev/values/${{ inputs.service_name }}.values.yaml"
+          if [ ! -f "$FILE" ]; then
+            echo "Missing values file: $FILE"
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import os
+          import re
+          file_path = os.environ["FILE"]
+          new_tag = os.environ["NEW_TAG"]
+          data = open(file_path, encoding="utf-8").read()
+          data, n = re.subn(r'(^\s*tag:\s*).+$', r'\1"' + new_tag + '"', data, flags=re.M)
+          if n == 0:
+            raise SystemExit("Could not find image tag line")
+          open(file_path, "w", encoding="utf-8").write(data)
+          PY
+        env:
+          FILE: platform-env/environments/dev/values/${{ inputs.service_name }}.values.yaml
+          NEW_TAG: ${{ inputs.image_tag }}
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          path: platform-env
+          commit-message: "gitops: update dev image for ${{ inputs.service_name }} to ${{ inputs.image_tag }}"
+          branch: "gitops/dev/${{ inputs.service_name }}-${{ inputs.image_tag }}"
+          title: "gitops: update dev image for ${{ inputs.service_name }}"
+          body: |
+            Automated dev promotion PR.
+
+            Service: `${{ inputs.service_name }}`
+            Environment: `dev`
+            Image tag: `${{ inputs.image_tag }}`
