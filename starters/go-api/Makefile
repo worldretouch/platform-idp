@@ -5,11 +5,21 @@ IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO ?= $(IMAGE_REGISTRY)/myorg/$(SERVICE_NAME)
 IMAGE_TAG ?= $(VERSION)
 
-.PHONY: help deps run test lint build docker-build docker-push
+.PHONY: help init deps run test lint build docker-build docker-push
 
 help:
 	@echo "Platform Service: $(SERVICE_NAME)"
-	@echo "  deps, run, test, lint, build, docker-build, docker-push"
+	@echo "  init, deps, run, test, lint, build, docker-build, docker-push"
+
+init:
+	@echo "Checking local prerequisites..."
+	@command -v go >/dev/null || (echo "Missing go" && exit 1)
+	@echo "Installing dependencies and running a smoke build..."
+	go mod download
+	go mod tidy
+	CGO_ENABLED=0 go build -o /tmp/$(SERVICE_NAME)-smoke ./cmd/server
+	@rm -f /tmp/$(SERVICE_NAME)-smoke
+	@echo "Init complete. Next: make run"
 
 deps:
 	go mod download

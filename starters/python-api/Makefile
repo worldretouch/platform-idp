@@ -3,10 +3,20 @@ SERVICE_NAME ?= $(shell grep -E '^service_name:' service.yaml 2>/dev/null | awk 
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO ?= $(IMAGE_REGISTRY)/myorg/$(SERVICE_NAME)
 
-.PHONY: help deps run test lint build docker-build docker-push
+.PHONY: help init deps run test lint build docker-build docker-push
 
 help:
 	@echo "Platform Service: $(SERVICE_NAME)"
+	@echo "  init, deps, run, test, lint, build, docker-build, docker-push"
+
+init:
+	@echo "Checking local prerequisites..."
+	@command -v python3 >/dev/null || (echo "Missing python3" && exit 1)
+	@command -v pip >/dev/null || (echo "Missing pip" && exit 1)
+	@echo "Installing dependencies and running smoke checks..."
+	pip install -r requirements-dev.txt
+	python3 -m py_compile app/main.py
+	@echo "Init complete. Next: make run"
 
 deps:
 	pip install -r requirements-dev.txt
