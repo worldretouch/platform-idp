@@ -22,8 +22,8 @@ _scaffold:
 		echo "Usage: make scaffold RUNTIME=<rails|go|node|python> SERVICE_NAME=<name>"; exit 1; \
 	fi
 	@mkdir -p $(OUTPUT_DIR)
-	@cp -r base-template/* $(OUTPUT_DIR)/ 2>/dev/null || true
-	@cp -r starters/$(RUNTIME)-api/* $(OUTPUT_DIR)/
+	@cp -r base-template/. $(OUTPUT_DIR)/ 2>/dev/null || true
+	@cp -r starters/$(RUNTIME)-api/. $(OUTPUT_DIR)/
 	@if [ -f "$(OUTPUT_DIR)/service.yaml" ]; then \
 		awk -v name="$(SERVICE_NAME)" -v runtime="$(RUNTIME)" \
 		'BEGIN{updated_name=0; updated_runtime=0} \

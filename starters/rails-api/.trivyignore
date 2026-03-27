@@ -1,0 +1,6 @@
+# Add approved CVE exceptions here only with expiry and owner.
+# Format:
+# CVE-YYYY-NNNNN # reason; owner=<team>; expires=YYYY-MM-DD
+#
+# Example:
+# CVE-2024-12345 # false-positive in scanner context; owner=platform; expires=2026-06-30

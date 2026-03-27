@@ -17,6 +17,14 @@ on:
         required: false
         type: string
         default: ""
+      platform_repo:
+        required: false
+        type: string
+        default: worldretouch/platform-idp
+      platform_ref:
+        required: false
+        type: string
+        default: main
     secrets:
       registry_token:
         required: false
@@ -34,6 +42,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Checkout platform workflow repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ inputs.platform_repo }}
+          ref: ${{ inputs.platform_ref }}
+          path: _platform
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -41,19 +55,21 @@ jobs:
       - name: Install validator dependencies
         run: pip install --disable-pip-version-check pyyaml jsonschema
       - name: Validate service.yaml
-        run: python shared/ci/validate-service-yaml.py
+        run: python _platform/shared/ci/validate-service-yaml.py --service-file service.yaml --schema-file _platform/shared/ci/service-yaml.schema.json
       - name: Enforce prod image tag policy
-        run: python shared/ci/check-prod-image-tags.py
+        run: python _platform/shared/ci/check-prod-image-tags.py
       - name: Enforce observability test policy
-        run: python shared/ci/check-observability-tests.py
+        run: python _platform/shared/ci/check-observability-tests.py
       - name: Enforce runtime parity policy
-        run: python shared/ci/check-runtime-parity.py
+        run: python _platform/shared/ci/check-runtime-parity.py
 
   lint:
     needs: [validate-contract]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install service dependencies
+        run: make deps
       - name: Lint
         run: make lint
 
@@ -62,6 +78,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install service dependencies
+        run: make deps
       - name: Test
         run: make test
 
@@ -75,6 +93,7 @@ jobs:
       - name: Build image (local for scan)
         run: |
           docker build \
+            --pull \
             --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
             --label org.opencontainers.image.revision=${{ github.sha }} \
             --label platform.service=${{ inputs.service_name }} \
@@ -87,6 +106,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          trivyignores: .trivyignore
           exit-code: '1'
           format: 'sarif'
           output: 'trivy-results.sarif'
@@ -95,6 +115,25 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+      - name: Trivy HIGH/CRITICAL summary (table)
+        if: always()
+        run: |
+          echo '## Trivy HIGH/CRITICAL Report' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          trivy image \
+            --vuln-type os,library \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --ignorefile .trivyignore \
+            --exit-code 0 \
+            --format table \
+            local/${{ github.event.repository.name }}:${{ github.sha }} \
+            | tee trivy_table.txt
+          {
+            echo '```'
+            cat trivy_table.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     needs: [build]
@@ -113,6 +152,7 @@ jobs:
       - name: Push
         run: |
           docker build \
+            --pull \
             --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
             --label org.opencontainers.image.revision=${{ github.sha }} \
             --label platform.service=${{ inputs.service_name }} \
@@ -148,12 +188,19 @@ jobs:
 
   update-dev-values:
     needs: [publish]
-    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && inputs.env_repo != '' && secrets.env_repo_token != ''
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && inputs.env_repo != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
+      - name: Validate env repo token
+        run: |
+          if [ -z "${{ secrets.env_repo_token }}" ]; then
+            echo "Missing required secret: env_repo_token"
+            echo "Add ENV_REPO_TOKEN in caller repo and map it to env_repo_token."
+            exit 1
+          fi
       - name: Checkout environment repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:

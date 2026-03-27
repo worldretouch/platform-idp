@@ -37,6 +37,10 @@ RULES: dict[str, list[tuple[str, list[str]]]] = {
 
 
 def main() -> int:
+    if not Path("starters").exists():
+        print("OK: runtime parity policy skipped (non-template repository)")
+        return 0
+
     violations: list[str] = []
 
     for runtime, checks in RULES.items():

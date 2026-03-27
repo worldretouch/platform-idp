@@ -18,6 +18,10 @@ REQUIRED_TESTS = {
 
 
 def main() -> int:
+    if not Path("starters").exists():
+        print("OK: observability starter policy skipped (non-template repository)")
+        return 0
+
     violations: list[str] = []
 
     for runtime, file_path in REQUIRED_TESTS.items():

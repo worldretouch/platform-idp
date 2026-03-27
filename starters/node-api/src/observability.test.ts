@@ -6,6 +6,6 @@ describe("observability log schema", () => {
 
     expect(log).toHaveProperty("request_id", "req-123");
     expect(log).toHaveProperty("trace_id", "trace-456");
-    expect(log).toHaveProperty("http.method", "GET");
+    expect(log["http.method"]).toBe("GET");
   });
 });

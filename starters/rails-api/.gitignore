@@ -1,0 +1,13 @@
+log/*
+tmp/*
+tmp/pids/*
+tmp/cache/*
+tmp/sockets/*
+public/assets
+storage/*
+vendor/bundle
+.bundle/
+.byebug_history
+.env
+.env.local
+.DS_Store
