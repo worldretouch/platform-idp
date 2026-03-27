@@ -14,9 +14,27 @@ All manifests use standardized placeholder tokens:
 
 - `argocd/`:
   - `project-platform-services.yaml`: ArgoCD project guardrails.
+  - `platform-argocd-config-app.yaml`: Application that syncs **only** `project-platform-services.yaml` from this repo (GitOps for the AppProject). Apply once; then commit-only updates.
   - `root-app.yaml`: app-of-apps entrypoint for environment apps.
 - `environments/`:
   - `dev/`, `staging/`, `prod/`: environment overlays and service app manifests.
+
+## GitOps for `AppProject` (no more manual `kubectl` for project edits)
+
+`platform-root` syncs path `environments/` only, so **`argocd/project-platform-services.yaml` is not applied by the root app**.
+
+To make AppProject changes **commit-only**:
+
+1. Ensure `argocd/platform-argocd-config-app.yaml` exists in `platform-env` (bootstrap copies it).
+2. **One-time** on the cluster:
+
+   ```bash
+   kubectl apply -n argocd -f argocd/platform-argocd-config-app.yaml
+   ```
+
+3. After that, any merge to `main` that changes `project-platform-services.yaml` is picked up by Argo CD automatically.
+
+This Application uses **project `default`** so it does not depend on `platform-services` (which it deploys).
 
 ## How to use
 

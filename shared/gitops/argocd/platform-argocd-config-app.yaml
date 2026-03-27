@@ -1,0 +1,24 @@
+# One-time bootstrap: kubectl apply -n __ARGOCD_NAMESPACE__ -f argocd/platform-argocd-config-app.yaml
+# After that, edits to project-platform-services.yaml in Git sync automatically.
+#
+# Uses project "default" so we do not depend on AppProject platform-services (which this app deploys).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-argocd-config
+  namespace: __ARGOCD_NAMESPACE__
+spec:
+  project: default
+  source:
+    repoURL: __PLATFORM_ENV_REPO_URL__
+    targetRevision: main
+    path: argocd
+    directory:
+      include: project-platform-services.yaml
+  destination:
+    server: __CLUSTER_API_SERVER__
+    namespace: __ARGOCD_NAMESPACE__
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

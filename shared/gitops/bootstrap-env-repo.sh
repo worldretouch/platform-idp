@@ -78,6 +78,7 @@ run_cmd mkdir -p "${TARGET_DIR}/environments/staging/apps" "${TARGET_DIR}/enviro
 run_cmd mkdir -p "${TARGET_DIR}/environments/prod/apps" "${TARGET_DIR}/environments/prod/values"
 
 run_cmd cp -f "${SKELETON_ROOT}/argocd/project-platform-services.yaml" "${TARGET_DIR}/argocd/"
+run_cmd cp -f "${SKELETON_ROOT}/argocd/platform-argocd-config-app.yaml" "${TARGET_DIR}/argocd/"
 run_cmd cp -f "${SKELETON_ROOT}/argocd/root-app.yaml" "${TARGET_DIR}/argocd/"
 run_cmd cp -f "${SKELETON_ROOT}/environments/dev/apps/orders-api.yaml" "${TARGET_DIR}/environments/dev/apps/"
 run_cmd cp -f "${SKELETON_ROOT}/environments/staging/apps/orders-api.yaml" "${TARGET_DIR}/environments/staging/apps/"
@@ -117,5 +118,7 @@ else
 fi
 echo "Next steps:"
 echo "  1) Commit files in env repo"
-echo "  2) Apply argocd/project-platform-services.yaml and argocd/root-app.yaml"
-echo "  3) Replace orders-api example with your real services"
+echo "  2) One-time: kubectl apply -n ${ARGOCD_NAMESPACE} -f argocd/platform-argocd-config-app.yaml"
+echo "     (GitOps for AppProject; future edits to project-platform-services.yaml need only git push)"
+echo "  3) One-time: kubectl apply -n ${ARGOCD_NAMESPACE} -f argocd/root-app.yaml"
+echo "  4) Replace orders-api example with your real services"

@@ -7,6 +7,7 @@ spec:
   description: Platform-managed service deployments
   sourceRepos:
     - "__PLATFORM_ENV_REPO_URL__"
+    - "__PLATFORM_TEMPLATE_REPO_URL__"
   destinations:
     - namespace: platform-dev
       server: "__CLUSTER_API_SERVER__"

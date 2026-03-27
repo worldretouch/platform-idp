@@ -99,17 +99,22 @@ jobs:
             --label platform.service=${{ inputs.service_name }} \
             --label platform.runtime=${{ inputs.runtime }} \
             -t local/${{ github.event.repository.name }}:${{ github.sha }} .
+      - name: Install Trivy CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
       - name: Trivy scan (fail on HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-        with:
-          image-ref: local/${{ github.event.repository.name }}:${{ github.sha }}
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          trivyignores: .trivyignore
-          exit-code: '1'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+        run: |
+          trivy image \
+            --scanners vuln \
+            --vuln-type os,library \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --ignorefile .trivyignore \
+            --exit-code 1 \
+            --format sarif \
+            -o trivy-results.sarif \
+            local/${{ github.event.repository.name }}:${{ github.sha }}
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3
         if: always()
@@ -125,6 +130,7 @@ jobs:
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --ignorefile .trivyignore \
+            --scanners vuln \
             --exit-code 0 \
             --format table \
             local/${{ github.event.repository.name }}:${{ github.sha }} \
@@ -184,7 +190,8 @@ jobs:
           COSIGN_EXPERIMENTAL: "1"
         run: |
           cosign verify ghcr.io/${{ github.repository }}:${{ github.sha }} \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "https://github.com/.+/.+/.+"
 
   update-dev-values:
     needs: [publish]
@@ -207,6 +214,7 @@ jobs:
           repository: ${{ inputs.env_repo }}
           token: ${{ secrets.env_repo_token }}
           path: platform-env
+          persist-credentials: false
 
       - name: Update dev values image tag
         run: |
