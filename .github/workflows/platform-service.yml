@@ -148,12 +148,19 @@ jobs:
 
   update-dev-values:
     needs: [publish]
-    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && inputs.env_repo != '' && secrets.env_repo_token != ''
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && inputs.env_repo != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
+      - name: Validate env repo token
+        run: |
+          if [ -z "${{ secrets.env_repo_token }}" ]; then
+            echo "Missing required secret: env_repo_token"
+            echo "Add ENV_REPO_TOKEN in caller repo and map it to env_repo_token."
+            exit 1
+          fi
       - name: Checkout environment repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
