@@ -43,3 +43,4 @@ platform-idp/
 - [Pilot Rollout Checklist](docs/PILOT-ROLLOUT-CHECKLIST.md)
 - [GA Readiness Checklist](docs/GA-READINESS-CHECKLIST.md)
 - [Launch Decision Form](docs/LAUNCH-DECISION.md)
+- [Huong Dan Van Hanh Tu 0 Den GA](docs/HUONG-DAN-VAN-HANH-0-DEN-GA.md)

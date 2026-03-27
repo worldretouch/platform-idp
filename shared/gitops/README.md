@@ -21,8 +21,8 @@ All manifests use standardized placeholder tokens:
 ## How to use
 
 1. Run bootstrap script:
-   - `bash shared/gitops/bootstrap-env-repo.sh --target-dir ../platform-env --env-repo-url <env-repo-url> --template-repo-url <template-repo-url>`
-   - Preview only: add `--dry-run`
+  - `bash shared/gitops/bootstrap-env-repo.sh --target-dir ../platform-env --env-repo-url <env-repo-url> --template-repo-url <template-repo-url>`
+  - Preview only: add `--dry-run`
 2. Add one service app in `environments/dev/apps/`.
 3. Promote by copying the same image tag from `dev` -> `staging` -> `prod`.
 4. Rollback by restoring the previous image tag via Git revert.
