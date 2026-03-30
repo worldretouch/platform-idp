@@ -1,0 +1,139 @@
+#
+# EXAMPLE: Environment promotion workflow (staging/prod)
+#
+# Copy this file into your environment repo as:
+#   .github/workflows/promote-to-env.yml
+# Then configure the following repository secrets in the env repo:
+#   - ENV_REPO_TOKEN   -> PAT or GitHub App token with contents:write + pull_requests:write
+#   - GHCR_READ_TOKEN  -> PAT with read:packages (for cosign verification of private GHCR images)
+#
+# Usage (from GitHub Actions tab of env repo):
+#   - service_name   = orders-api
+#   - environment    = staging or prod
+#   - image_tag      = git SHA already running on previous env
+#   - image_repository (optional) = overrides default ghcr.io/<org>/<service>
+#
+name: Promote service to environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Service name (e.g. orders-api)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment (staging or prod)"
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+      image_tag:
+        description: "Immutable image tag (git SHA already running on previous env)"
+        required: true
+        type: string
+      image_repository:
+        description: "Image repository (default ghcr.io/<org>/<service>)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  verify-and-promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Normalize image repository
+        id: repo
+        run: |
+          set -eu
+          svc="${{ inputs.service_name }}"
+          repo="${{ inputs.image_repository }}"
+          if [ -z "$repo" ]; then
+            # Default to GHCR under the same org as this repo.
+            owner="${GITHUB_REPOSITORY%/*}"
+            repo="ghcr.io/${owner}/${svc}"
+          fi
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR (for private images, prod only)
+        if: inputs.environment == 'prod'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # GHCR_READ_TOKEN should be a PAT or app token with at least read:packages
+          password: ${{ secrets.GHCR_READ_TOKEN }}
+
+      - name: Install cosign (for prod gate)
+        if: inputs.environment == 'prod'
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
+
+      - name: Verify image signature (prod only)
+        if: inputs.environment == 'prod'
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          IMAGE_REPOSITORY: ${{ steps.repo.outputs.repo }}
+        run: |
+          set -eu
+          IMAGE_REF="${IMAGE_REPOSITORY}:${{ inputs.image_tag }}"
+          echo "Verifying signature for ${IMAGE_REF}"
+          cosign verify "${IMAGE_REF}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "https://github.com/.+/.+/.+" \
+            --registry-username "${{ github.actor }}" \
+            --registry-password "${{ secrets.GHCR_READ_TOKEN }}"
+
+      - name: Checkout env repo (self)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Update values image tag
+        run: |
+          set -eu
+          ENV="${{ inputs.environment }}"
+          FILE="environments/${ENV}/values/${{ inputs.service_name }}.values.yaml"
+          if [ ! -f "$FILE" ]; then
+            echo "Missing values file: $FILE"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          import re
+          file_path = os.environ["FILE"]
+          new_tag = os.environ["NEW_TAG"]
+          data = open(file_path, encoding="utf-8").read()
+          data, n = re.subn(r'(^\s*tag:\s*).+$', r'\1"' + new_tag + '"', data, flags=re.M)
+          if n == 0:
+            raise SystemExit("Could not find image tag line")
+          open(file_path, "w", encoding="utf-8").write(data)
+          PY
+        env:
+          FILE: environments/${{ inputs.environment }}/values/${{ inputs.service_name }}.values.yaml
+          NEW_TAG: ${{ inputs.image_tag }}
+
+      - name: Create promotion PR
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
+        with:
+          # Use a PAT or GitHub App token with contents:write + pull_requests:write.
+          # Configure as repository secret ENV_REPO_TOKEN in the env repo.
+          token: ${{ secrets.ENV_REPO_TOKEN }}
+          commit-message: "gitops: promote ${{ inputs.service_name }} to ${{ inputs.environment }} (${{ inputs.image_tag }})"
+          branch: "gitops/${{ inputs.environment }}/${{ inputs.service_name }}-${{ inputs.image_tag }}"
+          title: "gitops: promote ${{ inputs.service_name }} to ${{ inputs.environment }}"
+          body: |
+            GitOps promotion PR.
+
+            Service: `${{ inputs.service_name }}`
+            Environment: `${{ inputs.environment }}`
+            Image: `${{ steps.repo.outputs.repo }}:${{ inputs.image_tag }}`
+
+            $(if [ "${{ inputs.environment }}" = "prod" ]; then cat <<'MSG'
+            Cosign verification was run in this workflow before opening this PR.
+            MSG
+            fi)
+

@@ -25,7 +25,7 @@
 | **Runtime starter** | Bootstrap code, framework setup, health impl, Dockerfile |
 | **Shared Helm chart** | K8s Deployment, Service, HPA, probes |
 | **Shared CI** | Lint, test, build, scan, publish |
-| **Backstage (future)** | Software template that composes base + runtime |
+| **Port.io (future)** | Catalog + self-service actions that compose base + runtime |
 
 **Common mistake**: Putting runtime-specific code in base template. Base = contract only.
 
@@ -90,7 +90,7 @@ Phase 1: Templates + Helm + CI (this deliverable)
     ↓
 Phase 2: Argo CD + GitOps
     ↓
-Phase 3: Backstage software templates
+Phase 3: Port.io blueprints / software templates
     ↓
 Phase 4: Terraform app provisioning
     ↓

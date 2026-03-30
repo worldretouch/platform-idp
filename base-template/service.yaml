@@ -1,4 +1,4 @@
-# Service metadata — used by Backstage, scaffolding, platform automation
+# Service metadata — used by Port.io catalog, scaffolding, platform automation
 # See docs/SERVICE-YAML-SCHEMA.md for full schema
 
 service_name: orders-api

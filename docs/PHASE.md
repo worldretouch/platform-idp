@@ -37,10 +37,16 @@ Progress:
 - Added runtime parity policy checker and CI gate.
 - Added production promotion policy and security/ops runbook docs.
 Phase 5 — Onboarding + Launch
-Onboarding guide 30 phút (CLI + Backstage).
+Onboarding guide 30 phút (CLI + Port.io developer portal).
 Dry-run với team pilot.
 Checklist GA “no DevOps ticket for standard path”.
 Progress:
 - Added `docs/ONBOARDING-30-MINUTES.md`.
 - Added pilot checklist for 2 teams in `docs/PILOT-ROLLOUT-CHECKLIST.md`.
 - Added launch gate checklist in `docs/GA-READINESS-CHECKLIST.md`.
+
+Phase 6 — Developer Portal (Port.io)
+**Prerequisite:** All four runtimes stable (scaffold, CI, observability smoke, parity) before rolling out catalog and self-service flows in Port.
+**Note:** Portal is **SaaS (Port.io)** — not hosted in-cluster; integrate catalog (`service.yaml`, repos) and actions per Port docs.
+Progress:
+- _TBD_

@@ -75,7 +75,7 @@
 
 ## What to Defer
 
-- **Backstage**: Phase 2 — after 2–3 services use the templates
+- **Port.io (developer portal)**: Phase 2 — after 2–3 services use the templates
 - **Terraform**: Phase 2 — when you need app infra provisioning
 - **Argo CD**: Phase 2 — when you have multiple envs and GitOps
 - **Vault integration**: Phase 2 — when secrets management is required

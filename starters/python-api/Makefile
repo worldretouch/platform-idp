@@ -26,7 +26,7 @@ run:
 	uvicorn app.main:app --reload --host 0.0.0.0 --port $${PORT:-3000}
 
 test:
-	pytest
+	PYTHONPATH=. pytest
 
 lint:
 	ruff check app/

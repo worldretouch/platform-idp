@@ -9,7 +9,7 @@
 | README.md template | Service overview, quick start |
 | Makefile | Common targets (help, docker-build, docker-push) |
 | .env.example | Env var contract |
-| service.yaml | Metadata for Backstage, scaffolding |
+| service.yaml | Metadata for Port.io catalog, scaffolding |
 | docs/ownership.md | Owner, escalation |
 | docs/runbook.md | Ops procedures |
 | docs/service-contract.md | Per-service contract summary |
@@ -70,16 +70,16 @@
 
 ---
 
-## Future Backstage Template
+## Developer portal (Port.io)
 
-**Purpose**: Scaffold new service from UI.
+**Purpose**: Service catalog, self-service actions, and scaffolding — **hosted by Port** (SaaS), not in this repo.
 
-**Composes**:
+**Composes** (conceptually):
 1. Base template (docs, service.yaml, .env.example)
 2. Runtime starter (Rails OR Go OR Node OR Python)
-3. Optional: CI workflow, Helm values
+3. Optional: CI workflow, Helm values — wired via Port blueprints and integrations
 
-**Output**: New repo or folder with merged content.
+**Output**: New repo or folder with merged content, driven by Port configuration outside `platform-idp`.
 
 ---
 

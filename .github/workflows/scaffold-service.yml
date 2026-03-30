@@ -1,0 +1,220 @@
+name: Scaffold Service Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        type: string
+      service_name:
+        description: "Service name (kebab-case), e.g. orders-api"
+        required: true
+        type: string
+      runtime:
+        description: "Runtime"
+        required: true
+        type: choice
+        options:
+          - go
+          - node
+          - python
+          - rails
+      domain:
+        description: "Business domain slug (e.g. orders) or DNS-style host (e.g. demo-api.com)"
+        required: true
+        type: string
+      owner:
+        description: "Owner team slug, e.g. platform-team"
+        required: true
+        type: string
+      description:
+        description: "Optional service description"
+        required: false
+        type: string
+        default: ""
+      expose_http:
+        description: "Expose HTTP service"
+        required: false
+        type: boolean
+        default: true
+      dependencies_database:
+        description: "Service depends on database"
+        required: false
+        type: boolean
+        default: false
+      dependencies_redis:
+        description: "Service depends on Redis"
+        required: false
+        type: boolean
+        default: false
+      github_org:
+        description: "GitHub organization/user for new repo"
+        required: false
+        type: string
+        default: ""
+      repo_visibility:
+        description: "Repository visibility"
+        required: false
+        type: choice
+        default: private
+        options:
+          - private
+          - public
+      default_branch:
+        description: "Default branch for new repository"
+        required: false
+        type: string
+        default: main
+      create_pr:
+        description: "Create initial PR instead of direct push"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_ORG_TOKEN }}
+      SERVICE_NAME: ${{ inputs.service_name }}
+      RUNTIME: ${{ inputs.runtime }}
+      DOMAIN: ${{ inputs.domain }}
+      OWNER: ${{ inputs.owner }}
+      SERVICE_DESCRIPTION: ${{ inputs.description }}
+      EXPOSE_HTTP: ${{ inputs.expose_http }}
+      DEP_DB: ${{ inputs.dependencies_database }}
+      DEP_REDIS: ${{ inputs.dependencies_redis }}
+      ORG: ${{ inputs.github_org != '' && inputs.github_org || github.repository_owner }}
+      VISIBILITY: ${{ inputs.repo_visibility }}
+      DEFAULT_BRANCH: ${{ inputs.default_branch }}
+      CREATE_PR: ${{ inputs.create_pr }}
+    steps:
+      - name: Checkout platform-idp
+        uses: actions/checkout@v4
+
+      - name: Create GitHub repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "GH_ORG_TOKEN secret is required"; exit 1
+          fi
+
+          if [[ "$VISIBILITY" == "public" ]]; then
+            gh repo create "${ORG}/${SERVICE_NAME}" --public --disable-issues --disable-wiki --description "${SERVICE_DESCRIPTION:-Scaffolded from platform-idp}"
+          else
+            gh repo create "${ORG}/${SERVICE_NAME}" --private --disable-issues --disable-wiki --description "${SERVICE_DESCRIPTION:-Scaffolded from platform-idp}"
+          fi
+
+      - name: Render service source from templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          make scaffold \
+            RUNTIME="${RUNTIME}" \
+            SERVICE_NAME="${SERVICE_NAME}" \
+            OUTPUT_DIR="/tmp/scaffold-output"
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          lines = [
+              f"service_name: {os.environ['SERVICE_NAME']}",
+              f"runtime: {os.environ['RUNTIME']}",
+              f"owner: {os.environ['OWNER']}",
+              f"domain: {os.environ['DOMAIN']}",
+          ]
+          description = os.environ.get("SERVICE_DESCRIPTION", "").strip()
+          if description:
+              lines.extend(["description: |", f"  {description}"])
+          lines.extend(
+              [
+                  f"expose_http: {os.environ['EXPOSE_HTTP']}",
+                  "health_path: /health/ready",
+                  "dependencies:",
+                  f"  database: {os.environ['DEP_DB']}",
+                  f"  redis: {os.environ['DEP_REDIS']}",
+              ]
+          )
+          Path("/tmp/scaffold-output/service.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Push scaffolded code to new repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          rm -rf /tmp/new-repo
+          mkdir -p /tmp/new-repo
+          cd /tmp/new-repo
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${ORG}/${SERVICE_NAME}.git"
+
+          if [[ "$CREATE_PR" == "true" ]]; then
+            git checkout -b "${DEFAULT_BRANCH}"
+            git commit --allow-empty -m "chore: bootstrap repository"
+            git push -u origin "${DEFAULT_BRANCH}"
+
+            git checkout -b "scaffold/initial-template"
+            cp -R /tmp/scaffold-output/. .
+            git add .
+            git commit -m "feat: scaffold ${SERVICE_NAME} from platform-idp template"
+            git push -u origin "scaffold/initial-template"
+
+            gh pr create \
+              --repo "${ORG}/${SERVICE_NAME}" \
+              --base "${DEFAULT_BRANCH}" \
+              --head "scaffold/initial-template" \
+              --title "feat: scaffold ${SERVICE_NAME} from platform-idp template" \
+              --body "Initial scaffold generated from platform template for runtime \`${RUNTIME}\`."
+          else
+            git checkout -b "${DEFAULT_BRANCH}"
+            cp -R /tmp/scaffold-output/. .
+            git add .
+            git commit -m "feat: scaffold ${SERVICE_NAME} from platform-idp template"
+            git push -u origin "${DEFAULT_BRANCH}"
+          fi
+
+          gh api -X PATCH "repos/${ORG}/${SERVICE_NAME}" -f default_branch="${DEFAULT_BRANCH}" || true
+
+      - name: Workflow summary
+        shell: bash
+        run: |
+          {
+            echo "## Scaffold completed"
+            echo "- Repository: https://github.com/${ORG}/${SERVICE_NAME}"
+            echo "- Runtime: ${RUNTIME}"
+            echo "- Domain: ${DOMAIN}"
+            echo "- Owner: ${OWNER}"
+            echo "- create_pr: ${CREATE_PR}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ✅ Report SUCCESS
+      - name: Report success to Port
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).runId }}
+          status: "SUCCESS"
+
+      # ❌ Report FAILURE
+      - name: Report failure to Port
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).runId }}
+          status: "FAILURE"
+          logMessage: |
+            Workflow failed at: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} Check the logs for details.

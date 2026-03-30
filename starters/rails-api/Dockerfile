@@ -5,14 +5,12 @@ ARG GIT_SHA=unknown
 ARG SERVICE_NAME=rails-api
 ARG RUNTIME=rails
 
-RUN apk add --no-cache build-base postgresql-dev
+RUN apk add --no-cache build-base postgresql-dev yaml-dev
 
 WORKDIR /app
 
-COPY Gemfile Gemfile.lock ./
-RUN bundle config set --local deployment 'true' \
-  && bundle config set --local without 'development test' \
-  && bundle install
+COPY Gemfile* ./
+RUN bundle install --without development test
 
 # Runtime stage
 FROM ruby:3.2-alpine
@@ -24,7 +22,9 @@ LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL platform.service="${SERVICE_NAME}"
 LABEL platform.runtime="${RUNTIME}"
 
-RUN apk add --no-cache libpq && adduser -D app
+RUN apk add --no-cache libpq tzdata && adduser -D app
+
+COPY --from=builder /usr/local/bundle /usr/local/bundle
 
 USER app
 WORKDIR /app

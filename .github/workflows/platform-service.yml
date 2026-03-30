@@ -68,6 +68,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Set up Ruby for Rails runtime
+        if: ${{ inputs.runtime == 'rails' }}
+        uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
       - name: Install service dependencies
         run: make deps
       - name: Lint
@@ -78,6 +84,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Set up Ruby for Rails runtime
+        if: ${{ inputs.runtime == 'rails' }}
+        uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
       - name: Install service dependencies
         run: make deps
       - name: Test

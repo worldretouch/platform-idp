@@ -46,7 +46,7 @@ platform-idp/
 | README.md | Service overview template |
 | Makefile | Common targets (help, docker-build, docker-push) |
 | .env.example | Env var contract |
-| service.yaml | Metadata for Backstage/scaffolding |
+| service.yaml | Metadata for Port.io catalog / scaffolding |
 | docs/ownership.md | Owner, escalation |
 | docs/runbook.md | Ops procedures |
 | docs/service-contract.md | Per-service contract |

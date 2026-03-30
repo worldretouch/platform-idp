@@ -41,7 +41,7 @@ jobs:
       - name: Run Python observability test
         run: |
           pip install --disable-pip-version-check -r requirements-dev.txt
-          pytest tests/test_observability.py
+          PYTHONPATH=. pytest tests/test_observability.py
         working-directory: starters/python-api
 
   rails-observability:

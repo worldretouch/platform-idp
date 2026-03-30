@@ -1,6 +1,6 @@
 # service.yaml Schema
 
-Used by Backstage, scaffolding, platform automation, and Terraform.
+Used by Port.io catalog, scaffolding, platform automation, and Terraform.
 
 ## Full Schema
 

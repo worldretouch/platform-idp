@@ -1,0 +1,146 @@
+{
+  "identifier": "scaffold_api",
+  "title": "Scaffold API",
+  "description": "Scaffold API Action",
+  "icon": "Aikido",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "blueprintIdentifier": "api_service",
+    "userInputs": {
+      "properties": {
+        "service_name": {
+          "type": "string",
+          "title": "Service Name",
+          "description": "kebab-case, e.g. orders-api",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 63
+        },
+        "runtime": {
+          "type": "string",
+          "title": "Runtime",
+          "default": "go",
+          "enum": [
+            "go",
+            "node",
+            "python",
+            "rails"
+          ],
+          "enumColors": {
+            "go": "turquoise",
+            "node": "green",
+            "python": "yellow",
+            "rails": "red"
+          }
+        },
+        "owner": {
+          "type": "string",
+          "title": "Owner",
+          "description": "Team slug, kebab-case, e.g. dev-team",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "default": "dev-team",
+          "minLength": 2,
+          "maxLength": 63
+        },
+        "domain": {
+          "type": "string",
+          "title": "Domain",
+          "icon": "Url",
+          "description": "Business slug (e.g. orders) or DNS hostname (e.g. demo-api.com)",
+          "pattern": "^(?:[a-z0-9]+(?:-[a-z0-9]+)*)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)*$",
+          "minLength": 2,
+          "maxLength": 253
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "maxLength": 300
+        },
+        "expose_http": {
+          "type": "boolean",
+          "title": "Expose HTTP",
+          "default": true
+        },
+        "dependencies_database": {
+          "type": "boolean",
+          "title": "Has Database",
+          "default": false
+        },
+        "dependencies_redis": {
+          "type": "boolean",
+          "title": "Has Redis",
+          "default": false
+        },
+        "github_org": {
+          "type": "string",
+          "title": "GitHub Org/User",
+          "description": "GitHub login (leave empty to use repository owner)",
+          "pattern": "^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$",
+          "maxLength": 39
+        },
+        "repo_visibility": {
+          "type": "string",
+          "title": "Repository Visibility",
+          "enum": [
+            "private",
+            "public"
+          ],
+          "default": "private"
+        },
+        "default_branch": {
+          "type": "string",
+          "title": "Default Branch",
+          "default": "main",
+          "enum": [
+            "main",
+            "master",
+            "develop"
+          ]
+        },
+        "create_pr": {
+          "type": "boolean",
+          "title": "Create Initial PR",
+          "default": false
+        }
+      },
+      "required": [
+        "service_name",
+        "runtime",
+        "domain",
+        "owner"
+      ],
+      "order": [
+        "service_name",
+        "runtime",
+        "owner",
+        "domain",
+        "description",
+        "expose_http",
+        "dependencies_database",
+        "dependencies_redis",
+        "github_org",
+        "repo_visibility",
+        "default_branch",
+        "create_pr"
+      ]
+    }
+  },
+  "invocationMethod": {
+    "type": "INTEGRATION_ACTION",
+    "installationId": "github-ocean",
+    "integrationActionType": "dispatch_workflow",
+    "integrationActionExecutionProperties": {
+      "org": "worldretouch",
+      "repo": "platform-idp",
+      "workflow": "scaffold-service.yml",
+      "ref": "main",
+      "reportWorkflowStatus": true,
+      "workflowInputs": {
+        "{{ spreadValue() }}": "{{ .inputs }}",
+        "port_context": "{\"runId\": \"{{ .run.id }}\", \"blueprint\": \"{{ .action.blueprint }}\"}"
+      }
+    }
+  },
+  "allowAnyoneToViewRuns": true
+}

@@ -8,6 +8,11 @@ image:
   tag: "dev-sha-REPLACE_ME"
   pullPolicy: IfNotPresent
 
+# Create a docker-registry secret named ghcr-pull in this namespace (e.g. kubectl create secret docker-registry ...).
+# Change the name below if your team uses a different secret name.
+imagePullSecrets:
+  - name: ghcr-pull
+
 autoscaling:
   enabled: true
   minReplicas: 2
@@ -18,5 +23,5 @@ env:
   APP_ENV: development
   LOG_LEVEL: info
 
-existingSecret: ghcr-pull
+existingSecret: ""
 
