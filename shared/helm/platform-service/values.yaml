@@ -11,6 +11,9 @@ image:
   repository: ghcr.io/myorg
   tag: latest
   pullPolicy: IfNotPresent
+# Required when GHCR package is private: create Secret (docker-registry) in namespace, list name(s) here.
+# Argo CD does not pull images; kubelet uses these credentials.
+imagePullSecrets: []
 
 resources:
   requests:

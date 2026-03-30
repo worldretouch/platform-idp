@@ -85,3 +85,36 @@ This document defines the deployment flow for platform services using ArgoCD + G
 - Fallback/manual template remains available:
   - `shared/gitops/update-dev-values-after-publish.example.yml`
 
+## Private images on GHCR (`401 Unauthorized` on pull)
+
+Argo CD **does not** pull container images. The **kubelet** on each node pulls `ghcr.io/...` using credentials from the **namespace** (or cluster) where the Pod runs.
+
+**Golden path (choose one):**
+
+1. **Public package (simplest for dev/pilot)**  
+   In GitHub: **Packages** → `orders-api` → **Package settings** → **Change package visibility** → **Public**.  
+   No `imagePullSecrets` required.
+
+2. **Private package (recommended for prod)**  
+   - Create a GitHub **PAT** or use a **machine user** with `read:packages` (and `repo` if needed).  
+   - Create a pull secret in each target namespace (once per env):
+
+     ```bash
+     kubectl create secret docker-registry ghcr-pull \
+       --namespace platform-dev \
+       --docker-server=ghcr.io \
+       --docker-username=<github-username-or-bot> \
+       --docker-password=<token>
+     ```
+
+   - In `platform-env` values for that service, set (Helm chart supports this):
+
+     ```yaml
+     imagePullSecrets:
+       - name: ghcr-pull
+     ```
+
+   - **GitOps**: either manage the secret with **External Secrets / Sealed Secrets**, or apply it out-of-band and keep only `imagePullSecrets` in Git values. Do **not** put raw tokens in plain Git.
+
+**Not configured in Argo CD:** repository credentials in Argo CD are for **Git** repos, not for **container registry** pulls at runtime.
+

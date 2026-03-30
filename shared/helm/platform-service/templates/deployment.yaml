@@ -16,6 +16,10 @@ spec:
         app.kubernetes.io/name: {{ .Values.service.name }}
         app.kubernetes.io/component: api
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Values.service.name }}
           image: "{{ .Values.image.repository }}/{{ .Values.service.name }}:{{ .Values.image.tag }}"
