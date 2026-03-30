@@ -7,6 +7,7 @@ service:
   replicas: 2
 
 image:
+  # Overridden per env from platform-env; default for local helm template only
   repository: ghcr.io/myorg
   tag: latest
   pullPolicy: IfNotPresent

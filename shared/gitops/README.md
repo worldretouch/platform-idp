@@ -7,6 +7,7 @@ All manifests use standardized placeholder tokens:
 
 - `__PLATFORM_ENV_REPO_URL__`
 - `__PLATFORM_TEMPLATE_REPO_URL__`
+- `__GITHUB_ORG__` (GHCR image path `ghcr.io/<org>/<service>`; set via `--github-org`)
 - `__ARGOCD_NAMESPACE__`
 - `__CLUSTER_API_SERVER__`
 
@@ -38,8 +39,8 @@ This Application uses **project `default`** so it does not depend on `platform-s
 
 ## How to use
 
-1. Run bootstrap script:
-  - `bash shared/gitops/bootstrap-env-repo.sh --target-dir ../platform-env --env-repo-url <env-repo-url> --template-repo-url <template-repo-url>`
+1. Run bootstrap script (set your GitHub org for GHCR, e.g. `worldretouch`):
+  - `bash shared/gitops/bootstrap-env-repo.sh --target-dir ../platform-env --env-repo-url <env-repo-url> --template-repo-url <template-repo-url> --github-org <org>`
   - Preview only: add `--dry-run`
 2. Add one service app in `environments/dev/apps/`.
 3. Promote by copying the same image tag from `dev` -> `staging` -> `prod`.

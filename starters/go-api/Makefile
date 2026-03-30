@@ -2,7 +2,8 @@
 SERVICE_NAME ?= $(shell grep -E '^service_name:' service.yaml 2>/dev/null | awk '{print $$2}' || echo "go-api")
 VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo "dev")
 IMAGE_REGISTRY ?= ghcr.io
-IMAGE_REPO ?= $(IMAGE_REGISTRY)/myorg/$(SERVICE_NAME)
+GITHUB_ORG ?= myorg
+IMAGE_REPO ?= $(IMAGE_REGISTRY)/$(GITHUB_ORG)/$(SERVICE_NAME)
 IMAGE_TAG ?= $(VERSION)
 
 .PHONY: help init deps run test lint build docker-build docker-push

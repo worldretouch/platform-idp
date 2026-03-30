@@ -9,10 +9,12 @@ set -euo pipefail
 #     --template-repo-url https://github.com/myorg/platform-idp.git \
 #     --argocd-namespace argocd \
 #     --cluster-api-server https://kubernetes.default.svc
+#     --github-org myorg   # GHCR image path ghcr.io/<org>/<service>
 
 TARGET_DIR=""
 ENV_REPO_URL=""
 TEMPLATE_REPO_URL=""
+GITHUB_ORG="myorg"
 ARGOCD_NAMESPACE="argocd"
 CLUSTER_API_SERVER="https://kubernetes.default.svc"
 DRY_RUN="false"
@@ -37,6 +39,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --cluster-api-server)
       CLUSTER_API_SERVER="$2"
+      shift 2
+      ;;
+    --github-org)
+      GITHUB_ORG="$2"
       shift 2
       ;;
     --dry-run)
@@ -106,10 +112,11 @@ while IFS= read -r file; do
   else
     replace_token "__PLATFORM_ENV_REPO_URL__" "${ENV_REPO_URL}" "${file}"
     replace_token "__PLATFORM_TEMPLATE_REPO_URL__" "${TEMPLATE_REPO_URL}" "${file}"
+    replace_token "__GITHUB_ORG__" "${GITHUB_ORG}" "${file}"
     replace_token "__ARGOCD_NAMESPACE__" "${ARGOCD_NAMESPACE}" "${file}"
     replace_token "__CLUSTER_API_SERVER__" "${CLUSTER_API_SERVER}" "${file}"
   fi
-done < <(rg -l "__PLATFORM_ENV_REPO_URL__|__PLATFORM_TEMPLATE_REPO_URL__|__ARGOCD_NAMESPACE__|__CLUSTER_API_SERVER__" "${TARGET_DIR}")
+done < <(rg -l "__PLATFORM_ENV_REPO_URL__|__PLATFORM_TEMPLATE_REPO_URL__|__GITHUB_ORG__|__ARGOCD_NAMESPACE__|__CLUSTER_API_SERVER__" "${TARGET_DIR}")
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo "GitOps bootstrap dry-run completed for ${TARGET_DIR}"

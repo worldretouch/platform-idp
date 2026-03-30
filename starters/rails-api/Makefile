@@ -1,7 +1,8 @@
 # Rails API — Platform Service
 SERVICE_NAME ?= $(shell grep -E '^service_name:' service.yaml 2>/dev/null | awk '{print $$2}' || echo "rails-api")
 IMAGE_REGISTRY ?= ghcr.io
-IMAGE_REPO ?= $(IMAGE_REGISTRY)/myorg/$(SERVICE_NAME)
+GITHUB_ORG ?= myorg
+IMAGE_REPO ?= $(IMAGE_REGISTRY)/$(GITHUB_ORG)/$(SERVICE_NAME)
 
 .PHONY: help init deps run test lint build docker-build docker-push
 
