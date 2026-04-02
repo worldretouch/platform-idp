@@ -1,0 +1,29 @@
+{
+  "identifier": "k8s_cluster",
+  "title": "Kubernetes Cluster",
+  "icon": "Cluster",
+  "schema": {
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Cloud Provider",
+        "enum": ["digitalocean", "aws", "gcp", "azure", "on-prem"]
+      },
+      "region": {
+        "type": "string",
+        "title": "Region"
+      },
+      "version": {
+        "type": "string",
+        "title": "K8s Version"
+      },
+      "api_server_url": {
+        "type": "string",
+        "title": "API Server URL",
+        "format": "url"
+      }
+    },
+    "required": ["provider"]
+  },
+  "relations": {}
+}

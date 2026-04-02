@@ -1,0 +1,167 @@
+{
+  "identifier": "platform_k8s_health",
+  "title": "Kubernetes Health",
+  "icon": "Cluster",
+  "type": "dashboard",
+  "description": "Tình trạng workloads, pods, nodes trên cluster",
+  "widgets": {
+    "id": "k8sHealthRoot",
+    "type": "dashboard-widget",
+    "layout": [
+      {
+        "height": 400,
+        "columns": [
+          { "id": "totalWorkloads", "size": 3 },
+          { "id": "healthyWorkloads", "size": 3 },
+          { "id": "unhealthyWorkloads", "size": 3 },
+          { "id": "totalPods", "size": 3 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "workloadsByNamespace", "size": 6 },
+          { "id": "workloadsByKind", "size": 6 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "workloadsTable", "size": 12 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "podsTable", "size": 12 }
+        ]
+      }
+    ],
+    "widgets": [
+      {
+        "id": "totalWorkloads",
+        "title": "Total Workloads",
+        "type": "entities-number-chart",
+        "icon": "Deployment",
+        "blueprint": "k8s_workload",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_workload", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "healthyWorkloads",
+        "title": "Healthy",
+        "type": "entities-number-chart",
+        "icon": "Check",
+        "blueprint": "k8s_workload",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_workload", "property": "$blueprint" },
+            { "operator": "=", "value": "Healthy", "property": "isHealthy" }
+          ]
+        }
+      },
+      {
+        "id": "unhealthyWorkloads",
+        "title": "Unhealthy",
+        "type": "entities-number-chart",
+        "icon": "Alert",
+        "blueprint": "k8s_workload",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_workload", "property": "$blueprint" },
+            { "operator": "!=", "value": "Healthy", "property": "isHealthy" }
+          ]
+        }
+      },
+      {
+        "id": "totalPods",
+        "title": "Total Pods",
+        "type": "entities-number-chart",
+        "icon": "Package",
+        "blueprint": "k8s_pod",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_pod", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "workloadsByNamespace",
+        "title": "Workloads by Namespace",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_workload", "property": "$blueprint" }
+          ]
+        },
+        "property": "relation#Namespace"
+      },
+      {
+        "id": "workloadsByKind",
+        "title": "Workloads by Kind",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_workload", "property": "$blueprint" }
+          ]
+        },
+        "property": "property#kind"
+      },
+      {
+        "id": "workloadsTable",
+        "title": "All Workloads",
+        "type": "table-entities-explorer",
+        "displayMode": "widget",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_workload", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "podsTable",
+        "title": "All Pods",
+        "type": "table-entities-explorer",
+        "displayMode": "widget",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "k8s_pod", "property": "$blueprint" }
+          ]
+        }
+      }
+    ]
+  }
+}

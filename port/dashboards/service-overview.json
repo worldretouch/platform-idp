@@ -1,0 +1,130 @@
+{
+  "identifier": "platform_service_overview",
+  "title": "Service Overview",
+  "icon": "Microservice",
+  "type": "dashboard",
+  "description": "Tổng quan tất cả API services: runtime, owner, scorecard",
+  "widgets": {
+    "id": "svcOverviewRoot",
+    "type": "dashboard-widget",
+    "layout": [
+      {
+        "height": 400,
+        "columns": [
+          { "id": "totalServices", "size": 4 },
+          { "id": "servicesMissingOwner", "size": 4 },
+          { "id": "servicesWithDb", "size": 4 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "servicesByRuntime", "size": 6 },
+          { "id": "servicesByDomain", "size": 6 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "servicesTable", "size": 12 }
+        ]
+      }
+    ],
+    "widgets": [
+      {
+        "id": "totalServices",
+        "title": "Total Services",
+        "type": "entities-number-chart",
+        "icon": "Microservice",
+        "blueprint": "api_service",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "servicesMissingOwner",
+        "title": "Missing Owner",
+        "type": "entities-number-chart",
+        "icon": "Alert",
+        "blueprint": "api_service",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" },
+            { "operator": "isEmpty", "property": "$team" }
+          ]
+        }
+      },
+      {
+        "id": "servicesWithDb",
+        "title": "With Database",
+        "type": "entities-number-chart",
+        "icon": "DefaultProperty",
+        "blueprint": "api_service",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" },
+            { "operator": "=", "value": true, "property": "has_database" }
+          ]
+        }
+      },
+      {
+        "id": "servicesByRuntime",
+        "title": "Services by Runtime",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        },
+        "property": "property#runtime"
+      },
+      {
+        "id": "servicesByDomain",
+        "title": "Services by Domain",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        },
+        "property": "property#domain"
+      },
+      {
+        "id": "servicesTable",
+        "title": "All Services",
+        "type": "table-entities-explorer",
+        "displayMode": "widget",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        }
+      }
+    ]
+  }
+}

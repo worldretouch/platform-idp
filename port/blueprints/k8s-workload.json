@@ -1,0 +1,64 @@
+{
+  "identifier": "k8s_workload",
+  "title": "Kubernetes Workload",
+  "icon": "Deployment",
+  "schema": {
+    "properties": {
+      "kind": {
+        "type": "string",
+        "title": "Kind",
+        "enum": ["Deployment", "StatefulSet", "DaemonSet"]
+      },
+      "replicas": {
+        "type": "number",
+        "title": "Desired Replicas"
+      },
+      "available_replicas": {
+        "type": "number",
+        "title": "Available Replicas"
+      },
+      "image": {
+        "type": "string",
+        "title": "Container Image"
+      },
+      "is_healthy": {
+        "type": "boolean",
+        "title": "Healthy"
+      },
+      "strategy": {
+        "type": "string",
+        "title": "Update Strategy"
+      },
+      "creation_timestamp": {
+        "type": "string",
+        "title": "Created At",
+        "format": "date-time"
+      },
+      "labels": {
+        "type": "object",
+        "title": "Labels"
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "namespace": {
+      "title": "Namespace",
+      "target": "k8s_namespace",
+      "required": false,
+      "many": false
+    },
+    "service": {
+      "title": "API Service",
+      "target": "api_service",
+      "required": false,
+      "many": false
+    },
+    "environment": {
+      "title": "Environment",
+      "target": "environment",
+      "required": false,
+      "many": false
+    }
+  }
+}

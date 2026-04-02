@@ -1,0 +1,58 @@
+{
+  "identifier": "bootstrap_env_repo",
+  "title": "Bootstrap Environment Repo",
+  "description": "Create and bootstrap platform-env repo with ArgoCD structure (dev/staging/prod)",
+  "icon": "Argo",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "userInputs": {
+      "properties": {
+        "env_repo_name": {
+          "type": "string",
+          "title": "Environment Repo Name",
+          "description": "Name for the GitOps environment repo",
+          "default": "platform-env",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 63
+        },
+        "github_org": {
+          "type": "string",
+          "title": "GitHub Org/User",
+          "description": "GitHub org or user that will own the new repo",
+          "pattern": "^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$",
+          "maxLength": 39
+        },
+        "repo_visibility": {
+          "type": "string",
+          "title": "Repository Visibility",
+          "enum": ["private", "public"],
+          "default": "private"
+        }
+      },
+      "required": ["env_repo_name", "github_org"],
+      "order": ["env_repo_name", "github_org", "repo_visibility"]
+    }
+  },
+  "invocationMethod": {
+    "type": "INTEGRATION_ACTION",
+    "installationId": "github-ocean",
+    "integrationActionType": "dispatch_workflow",
+    "integrationActionExecutionProperties": {
+      "org": "worldretouch",
+      "repo": "platform-idp",
+      "workflow": "bootstrap-env-repo.yml",
+      "ref": "main",
+      "reportWorkflowStatus": false,
+      "workflowInputs": {
+        "env_repo_name": "{{ .inputs.env_repo_name }}",
+        "github_org": "{{ .inputs.github_org }}",
+        "repo_visibility": "{{ .inputs.repo_visibility }}",
+        "port_context": "{\"runId\":\"{{ .run.id }}\",\"blueprint\":\"{{ .action.blueprint }}\",\"action\":\"{{ .action.identifier }}\"}"
+      }
+    }
+  },
+  "requiredApproval": false,
+  "allowAnyoneToViewRuns": true
+}

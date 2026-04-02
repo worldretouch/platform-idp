@@ -1,0 +1,67 @@
+name: Scale Service
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        type: string
+      service_name:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+      replicas:
+        required: true
+        type: string
+
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    env:
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      PORT_BASE_URL: "https://api.port.io"
+    steps:
+      - name: Get Port token
+        id: port_token
+        run: |
+          TOKEN=$(curl -s -X POST "$PORT_BASE_URL/v1/auth/access_token" \
+            -H "Content-Type: application/json" \
+            -d '{"clientId":"${{ secrets.PORT_CLIENT_ID }}","clientSecret":"${{ secrets.PORT_CLIENT_SECRET }}"}' \
+            | jq -r '.accessToken')
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Log start
+        run: |
+          curl -sS -X POST "$PORT_BASE_URL/v1/actions/runs/$PORT_RUN_ID/logs" \
+            -H "Authorization: Bearer ${{ steps.port_token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"message\":\"Scaling ${{ inputs.service_name }} to ${{ inputs.replicas }} replicas in platform-${{ inputs.environment }}\"}"
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Scale deployment
+        run: |
+          kubectl scale deployment/${{ inputs.service_name }} \
+            --replicas=${{ inputs.replicas }} \
+            -n platform-${{ inputs.environment }}
+
+      - name: Log success
+        if: success()
+        run: |
+          curl -sS -X PATCH "$PORT_BASE_URL/v1/actions/runs/$PORT_RUN_ID" \
+            -H "Authorization: Bearer ${{ steps.port_token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"SUCCESS","message":"Service ${{ inputs.service_name }} scaled to ${{ inputs.replicas }} replicas"}'
+
+      - name: Log failure
+        if: failure()
+        run: |
+          curl -sS -X PATCH "$PORT_BASE_URL/v1/actions/runs/$PORT_RUN_ID" \
+            -H "Authorization: Bearer ${{ steps.port_token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"FAILURE","message":"Failed to scale ${{ inputs.service_name }}"}'

@@ -1,0 +1,17 @@
+# Port.io Kubernetes Exporter — Helm chart values
+#
+# Install:
+#   helm upgrade --install platform-cluster port-labs/port-k8s-exporter \
+#     --create-namespace --namespace port-k8s-exporter \
+#     --set secret.secrets.portClientId="$PORT_CLIENT_ID" \
+#     --set secret.secrets.portClientSecret="$PORT_CLIENT_SECRET" \
+#     -f port/exporter/values.yaml \
+#     --set-file configMap.config=port/exporter/config.yaml
+
+portBaseUrl: "https://api.port.io"
+stateKey: "k8s-exporter"
+createDefaultResources: false
+overwriteConfigurationOnRestart: true
+
+eventListener:
+  type: POLLING

@@ -9,6 +9,8 @@ spec:
     - "__PLATFORM_ENV_REPO_URL__"
     - "__PLATFORM_TEMPLATE_REPO_URL__"
   destinations:
+    - namespace: __ARGOCD_NAMESPACE__
+      server: "__CLUSTER_API_SERVER__"
     - namespace: platform-dev
       server: "__CLUSTER_API_SERVER__"
     - namespace: platform-staging

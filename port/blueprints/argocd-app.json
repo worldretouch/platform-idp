@@ -1,0 +1,83 @@
+{
+  "identifier": "argocd_app",
+  "title": "ArgoCD Application",
+  "icon": "Argo",
+  "schema": {
+    "properties": {
+      "sync_status": {
+        "type": "string",
+        "title": "Sync Status",
+        "enum": ["Synced", "OutOfSync", "Unknown"],
+        "enumColors": {
+          "Synced": "green",
+          "OutOfSync": "red",
+          "Unknown": "yellow"
+        }
+      },
+      "health_status": {
+        "type": "string",
+        "title": "Health Status",
+        "enum": ["Healthy", "Degraded", "Progressing", "Suspended", "Missing", "Unknown"],
+        "enumColors": {
+          "Healthy": "green",
+          "Degraded": "red",
+          "Progressing": "yellow",
+          "Suspended": "lightGray",
+          "Missing": "red",
+          "Unknown": "yellow"
+        }
+      },
+      "git_repo": {
+        "type": "string",
+        "title": "Git Repo URL",
+        "format": "url"
+      },
+      "git_path": {
+        "type": "string",
+        "title": "Git Path"
+      },
+      "target_revision": {
+        "type": "string",
+        "title": "Target Revision"
+      },
+      "destination_namespace": {
+        "type": "string",
+        "title": "Destination Namespace"
+      },
+      "destination_server": {
+        "type": "string",
+        "title": "Destination Server"
+      },
+      "created_at": {
+        "type": "string",
+        "title": "Created At",
+        "format": "date-time"
+      },
+      "auto_sync": {
+        "type": "boolean",
+        "title": "Auto Sync Enabled"
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "namespace": {
+      "title": "Namespace",
+      "target": "k8s_namespace",
+      "required": false,
+      "many": false
+    },
+    "service": {
+      "title": "API Service",
+      "target": "api_service",
+      "required": false,
+      "many": false
+    },
+    "environment": {
+      "title": "Environment",
+      "target": "environment",
+      "required": false,
+      "many": false
+    }
+  }
+}

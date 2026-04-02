@@ -1,0 +1,27 @@
+{
+  "identifier": "k8s_namespace",
+  "title": "Kubernetes Namespace",
+  "icon": "Environment",
+  "schema": {
+    "properties": {
+      "labels": {
+        "type": "object",
+        "title": "Labels"
+      },
+      "creation_timestamp": {
+        "type": "string",
+        "title": "Created At",
+        "format": "date-time"
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "cluster": {
+      "title": "Cluster",
+      "target": "k8s_cluster",
+      "required": false,
+      "many": false
+    }
+  }
+}

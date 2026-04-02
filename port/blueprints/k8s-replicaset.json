@@ -1,0 +1,39 @@
+{
+  "identifier": "k8s_replicaSet",
+  "title": "Kubernetes ReplicaSet",
+  "icon": "Deployment",
+  "schema": {
+    "properties": {
+      "creationTimestamp": {
+        "type": "string",
+        "title": "Created At",
+        "format": "date-time"
+      },
+      "replicas": {
+        "type": "number",
+        "title": "Desired Replicas"
+      },
+      "availableReplicas": {
+        "type": "number",
+        "title": "Available Replicas"
+      },
+      "containers": {
+        "type": "array",
+        "title": "Containers"
+      },
+      "replicaSetJson": {
+        "type": "object",
+        "title": "Spec"
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "replicaSetOwner": {
+      "title": "Workload Owner",
+      "target": "k8s_workload",
+      "required": false,
+      "many": false
+    }
+  }
+}

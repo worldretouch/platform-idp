@@ -1,0 +1,316 @@
+name: Bootstrap platform-env Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        type: string
+      env_repo_name:
+        description: "Name for the environment repo (e.g. platform-env)"
+        required: true
+        type: string
+        default: platform-env
+      github_org:
+        description: "GitHub org/user"
+        required: false
+        type: string
+        default: ""
+      repo_visibility:
+        description: "Repository visibility"
+        required: false
+        type: choice
+        default: private
+        options:
+          - private
+          - public
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_ORG_TOKEN }}
+      ENV_REPO_NAME: ${{ inputs.env_repo_name }}
+      ORG: ${{ inputs.github_org != '' && inputs.github_org || github.repository_owner }}
+      VISIBILITY: ${{ inputs.repo_visibility }}
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      PORT_BASE_URL: ${{ secrets.PORT_BASE_URL != '' && secrets.PORT_BASE_URL || 'https://api.port.io' }}
+
+    steps:
+      - name: Checkout platform-idp
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Port API
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ACCESS_TOKEN=$(
+            curl -sS -X POST "${PORT_BASE_URL}/v1/auth/access_token" \
+              -H "Content-Type: application/json" \
+              -d "{\"clientId\":\"${{ secrets.PORT_CLIENT_ID }}\",\"clientSecret\":\"${{ secrets.PORT_CLIENT_SECRET }}\"}" \
+            | jq -r '.accessToken'
+          )
+
+          if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
+            echo "Failed to get Port access token"; exit 1
+          fi
+
+          echo "PORT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Register Port run link
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: ${{ env.PORT_BASE_URL }}
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          statusLabel: "Bootstrap env repo started"
+          link: |
+            ["${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"]
+
+      - name: Create GitHub repository
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$1" '{message: $message}')" > /dev/null
+          }
+
+          if gh repo view "${ORG}/${ENV_REPO_NAME}" >/dev/null 2>&1; then
+            port_log "Repository ${ORG}/${ENV_REPO_NAME} already exists, skipping creation"
+            echo "REPO_EXISTED=true" >> "$GITHUB_ENV"
+          else
+            port_log "Creating repository ${ORG}/${ENV_REPO_NAME}"
+            if [[ "$VISIBILITY" == "public" ]]; then
+              gh repo create "${ORG}/${ENV_REPO_NAME}" --public --description "GitOps environment repo managed by ArgoCD"
+            else
+              gh repo create "${ORG}/${ENV_REPO_NAME}" --private --description "GitOps environment repo managed by ArgoCD"
+            fi
+            echo "REPO_EXISTED=false" >> "$GITHUB_ENV"
+            port_log "Repository created successfully"
+          fi
+
+      - name: Bootstrap env repo structure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$1" '{message: $message}')" > /dev/null
+          }
+
+          ENV_REPO_URL="https://github.com/${ORG}/${ENV_REPO_NAME}.git"
+          TEMPLATE_REPO_URL="https://github.com/${ORG}/platform-idp.git"
+
+          rm -rf /tmp/env-repo
+          mkdir -p /tmp/env-repo
+
+          port_log "Running bootstrap-env-repo.sh"
+
+          bash shared/gitops/bootstrap-env-repo.sh \
+            --target-dir /tmp/env-repo \
+            --env-repo-url "$ENV_REPO_URL" \
+            --template-repo-url "$TEMPLATE_REPO_URL" \
+            --github-org "$ORG"
+
+          port_log "Bootstrap completed, preparing to push"
+
+      - name: Push to env repo
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$1" '{message: $message}')" > /dev/null
+          }
+
+          cd /tmp/env-repo
+          git init
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${ORG}/${ENV_REPO_NAME}.git"
+
+          git checkout -b main
+          git add .
+          git commit -m "feat: bootstrap platform-env with ArgoCD structure"
+          git push -u origin main
+
+          gh api -X PATCH "repos/${ORG}/${ENV_REPO_NAME}" -f default_branch=main || true
+
+          port_log "Code pushed to ${ORG}/${ENV_REPO_NAME}"
+
+      - name: Create environment blueprint in Port
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$1" '{message: $message}')" > /dev/null
+          }
+
+          port_log "Creating/updating 'environment' blueprint"
+
+          BLUEPRINT_PAYLOAD=$(cat <<'EOF'
+          {
+            "identifier": "environment",
+            "title": "Environment",
+            "icon": "Environment",
+            "schema": {
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "title": "Environment Type",
+                  "enum": ["dev", "staging", "prod"],
+                  "enumColors": {
+                    "dev": "turquoise",
+                    "staging": "yellow",
+                    "prod": "red"
+                  }
+                },
+                "k8s_namespace": {
+                  "type": "string",
+                  "title": "Kubernetes Namespace"
+                },
+                "argocd_project": {
+                  "type": "string",
+                  "title": "ArgoCD Project"
+                }
+              },
+              "required": ["type", "k8s_namespace"]
+            },
+            "relations": {}
+          }
+          EOF
+          )
+
+          HTTP_CODE=$(curl -sS -o /tmp/port-bp-response.json -w "%{http_code}" \
+            -X POST "${PORT_BASE_URL}/v1/blueprints" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$BLUEPRINT_PAYLOAD")
+
+          if [[ "$HTTP_CODE" == "409" ]]; then
+            port_log "Blueprint 'environment' already exists, patching"
+            HTTP_CODE=$(curl -sS -o /tmp/port-bp-response.json -w "%{http_code}" \
+              -X PATCH "${PORT_BASE_URL}/v1/blueprints/environment" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$BLUEPRINT_PAYLOAD")
+          fi
+
+          if [[ "$HTTP_CODE" =~ ^2 ]]; then
+            port_log "Blueprint 'environment' ready (HTTP ${HTTP_CODE})"
+          else
+            port_log "Warning: blueprint creation returned HTTP ${HTTP_CODE}: $(cat /tmp/port-bp-response.json)"
+          fi
+
+      - name: Create environment entities in Port
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$1" '{message: $message}')" > /dev/null
+          }
+
+          for ENV_NAME in dev staging prod; do
+            ENTITY_PAYLOAD=$(jq -nc \
+              --arg id "$ENV_NAME" \
+              --arg title "$ENV_NAME" \
+              --arg type "$ENV_NAME" \
+              --arg ns "platform-${ENV_NAME}" \
+              --arg project "platform-services" \
+              '{
+                identifier: $id,
+                title: $title,
+                properties: {
+                  type: $type,
+                  k8s_namespace: $ns,
+                  argocd_project: $project
+                },
+                relations: {}
+              }')
+
+            HTTP_CODE=$(curl -sS -o /tmp/port-entity-response.json -w "%{http_code}" \
+              -X POST "${PORT_BASE_URL}/v1/blueprints/environment/entities?upsert=true" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$ENTITY_PAYLOAD")
+
+            if [[ "$HTTP_CODE" =~ ^2 ]]; then
+              port_log "Entity '${ENV_NAME}' created in environment catalog"
+            else
+              port_log "Warning: entity '${ENV_NAME}' failed (HTTP ${HTTP_CODE}): $(cat /tmp/port-entity-response.json)"
+            fi
+          done
+
+          port_log "Environment entities (dev/staging/prod) registered in Port"
+
+      - name: Finalize success in Port
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SUMMARY="Bootstrap completed. Repo: https://github.com/${ORG}/${ENV_REPO_NAME}"
+
+          curl -sS -X PATCH "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg status "SUCCESS" \
+              --arg statusLabel "Bootstrap completed" \
+              --arg summary "$SUMMARY" \
+              --arg link "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{status: $status, statusLabel: $statusLabel, summary: $summary, link: [$link]}')"
+
+          curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg message "Bootstrap completed successfully" \
+              --arg terminationStatus "SUCCESS" \
+              '{message: $message, terminationStatus: $terminationStatus}')"
+
+      - name: Finalize failure in Port
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -sS -X PATCH "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg statusLabel "Bootstrap failed" \
+              --arg link "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{statusLabel: $statusLabel, link: [$link]}')"
+
+          curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg message "Bootstrap failed. Check GitHub Actions logs." \
+              --arg terminationStatus "FAILURE" \
+              '{message: $message, terminationStatus: $terminationStatus}')"

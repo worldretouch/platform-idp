@@ -1,0 +1,33 @@
+{
+  "identifier": "scaffold_gitops",
+  "title": "Scaffold GitOps",
+  "description": "Generate ArgoCD app + Helm values in platform-env for a service",
+  "icon": "Argo",
+  "trigger": {
+    "type": "self-service",
+    "operation": "DAY-2",
+    "blueprintIdentifier": "api_service",
+    "userInputs": {
+      "properties": {},
+      "required": []
+    }
+  },
+  "invocationMethod": {
+    "type": "INTEGRATION_ACTION",
+    "installationId": "github-ocean",
+    "integrationActionType": "dispatch_workflow",
+    "integrationActionExecutionProperties": {
+      "org": "worldretouch",
+      "repo": "platform-idp",
+      "workflow": "scaffold-env.yml",
+      "ref": "main",
+      "reportWorkflowStatus": false,
+      "workflowInputs": {
+        "service_name": "{{ .entity.properties.service_name }}",
+        "port_context": "{\"runId\":\"{{ .run.id }}\",\"blueprint\":\"{{ .action.blueprint }}\",\"action\":\"{{ .action.identifier }}\"}"
+      }
+    }
+  },
+  "requiredApproval": false,
+  "allowAnyoneToViewRuns": true
+}

@@ -1,0 +1,42 @@
+{
+  "identifier": "k8s_pod",
+  "title": "Kubernetes Pod",
+  "icon": "Service",
+  "schema": {
+    "properties": {
+      "startTime": {
+        "type": "string",
+        "title": "Created",
+        "format": "date-time",
+        "description": "Pod's creation date"
+      },
+      "phase": {
+        "type": "string",
+        "title": "Pod phase",
+        "description": "Pod's running phase"
+      },
+      "labels": {
+        "type": "object",
+        "title": "Labels",
+        "description": "Labels of the Pod"
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "replicaSet": {
+      "title": "ReplicaSet",
+      "description": "The ReplicaSet managing the pod (if it exists)",
+      "target": "k8s_replicaSet",
+      "required": false,
+      "many": false
+    },
+    "Node": {
+      "title": "Node",
+      "description": "The node the pod is running on",
+      "target": "k8s_node",
+      "required": false,
+      "many": false
+    }
+  }
+}

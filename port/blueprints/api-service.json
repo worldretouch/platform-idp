@@ -1,0 +1,77 @@
+{
+  "identifier": "api_service",
+  "title": "API-Service",
+  "icon": "Microservice",
+  "ownership": {
+    "type": "Direct",
+    "title": "Owner"
+  },
+  "schema": {
+    "properties": {
+      "service_name": {
+        "type": "string",
+        "title": "Service Name",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "runtime": {
+        "type": "string",
+        "title": "Runtime",
+        "enum": [
+          "go",
+          "node",
+          "python",
+          "rails"
+        ],
+        "enumColors": {
+          "go": "turquoise",
+          "node": "green",
+          "python": "yellow",
+          "rails": "red"
+        }
+      },
+      "domain": {
+        "type": "string",
+        "title": "Domain"
+      },
+      "owner": {
+        "type": "string",
+        "title": "Owner Team Slug"
+      },
+      "repo_url": {
+        "type": "string",
+        "title": "Repository URL",
+        "format": "url"
+      },
+      "has_database": {
+        "type": "boolean",
+        "title": "Has Database",
+        "default": false
+      },
+      "has_redis": {
+        "type": "boolean",
+        "title": "Has Redis",
+        "default": false
+      },
+      "platform_template_version": {
+        "type": "string",
+        "title": "Template Version"
+      }
+    },
+    "required": [
+      "service_name",
+      "runtime",
+      "owner"
+    ]
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "team": {
+      "title": "Team",
+      "target": "_team",
+      "required": false,
+      "many": false
+    }
+  }
+}

@@ -82,7 +82,9 @@ run_cmd mkdir -p "${TARGET_DIR}/argocd"
 run_cmd mkdir -p "${TARGET_DIR}/environments/dev/apps" "${TARGET_DIR}/environments/dev/values"
 run_cmd mkdir -p "${TARGET_DIR}/environments/staging/apps" "${TARGET_DIR}/environments/staging/values"
 run_cmd mkdir -p "${TARGET_DIR}/environments/prod/apps" "${TARGET_DIR}/environments/prod/values"
+run_cmd mkdir -p "${TARGET_DIR}/.github/workflows"
 
+run_cmd cp -f "${SKELETON_ROOT}/promote-to-env.example.yml" "${TARGET_DIR}/.github/workflows/promote-to-env.yml"
 run_cmd cp -f "${SKELETON_ROOT}/argocd/project-platform-services.yaml" "${TARGET_DIR}/argocd/"
 run_cmd cp -f "${SKELETON_ROOT}/argocd/platform-argocd-config-app.yaml" "${TARGET_DIR}/argocd/"
 run_cmd cp -f "${SKELETON_ROOT}/argocd/root-app.yaml" "${TARGET_DIR}/argocd/"
@@ -116,7 +118,7 @@ while IFS= read -r file; do
     replace_token "__ARGOCD_NAMESPACE__" "${ARGOCD_NAMESPACE}" "${file}"
     replace_token "__CLUSTER_API_SERVER__" "${CLUSTER_API_SERVER}" "${file}"
   fi
-done < <(rg -l "__PLATFORM_ENV_REPO_URL__|__PLATFORM_TEMPLATE_REPO_URL__|__GITHUB_ORG__|__ARGOCD_NAMESPACE__|__CLUSTER_API_SERVER__" "${TARGET_DIR}")
+done < <(grep -rl "__PLATFORM_ENV_REPO_URL__\|__PLATFORM_TEMPLATE_REPO_URL__\|__GITHUB_ORG__\|__ARGOCD_NAMESPACE__\|__CLUSTER_API_SERVER__" "${TARGET_DIR}" 2>/dev/null || true)
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo "GitOps bootstrap dry-run completed for ${TARGET_DIR}"

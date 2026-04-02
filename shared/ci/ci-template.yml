@@ -9,10 +9,13 @@ on:
   pull_request:
     branches: [main]
 
+# Match shared/ci/example-service-workflow.yml — ceiling for publish (GHCR), CodeQL/SARIF, cosign (id-token)
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   packages: write
   security-events: write
+  id-token: write
 
 jobs:
   validate-contract:

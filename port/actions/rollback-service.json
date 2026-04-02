@@ -1,0 +1,34 @@
+{
+  "identifier": "rollback_service",
+  "title": "Rollback Service",
+  "icon": "Argo",
+  "trigger": {
+    "type": "self-service",
+    "operation": "DAY-2",
+    "blueprintIdentifier": "api_service",
+    "userInputs": {
+      "properties": {
+        "environment": {
+          "type": "string",
+          "title": "Environment",
+          "enum": ["dev", "staging", "prod"],
+          "default": "dev"
+        }
+      },
+      "required": ["environment"]
+    }
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "org": "worldretouch",
+    "repo": "platform-idp",
+    "workflow": "rollback-service.yml",
+    "workflowInputs": {
+      "service_name": "{{ .entity.properties.service_name }}",
+      "environment": "{{ .inputs.environment }}",
+      "port_context": "{\"runId\":\"{{ .run.id }}\"}"
+    },
+    "reportWorkflowStatus": true
+  },
+  "requiredApproval": false
+}

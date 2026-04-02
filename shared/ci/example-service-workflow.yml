@@ -1,5 +1,10 @@
-# Example: Copy to your service repo as .github/workflows/ci.yml
-# This workflow calls the platform reusable workflow
+# Generated for each service by scaffold: see base-template/.github/workflows/ci.yml
+#
+# Reusable workflow lives in platform-idp (single source of truth):
+#   org/platform-idp/.github/workflows/platform-service.yml@main
+#
+# Service repo only needs this thin wrapper + secret ENV_REPO_TOKEN (PAT with repo access
+# to platform-env for promote flows).
 
 name: CI
 
@@ -9,13 +14,21 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+  security-events: write
+  id-token: write
+
 jobs:
   platform-ci:
-    uses: ./.github/workflows/platform-service.yml
-    # Or if in separate repo: myorg/platform-idp/.github/workflows/platform-service.yml@main
+    uses: myorg/platform-idp/.github/workflows/platform-service.yml@main
     with:
       service_name: orders-api
       runtime: go
       env_repo: myorg/platform-env
+      platform_repo: myorg/platform-idp
+      platform_ref: main
     secrets:
       env_repo_token: ${{ secrets.ENV_REPO_TOKEN }}

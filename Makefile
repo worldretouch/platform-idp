@@ -3,11 +3,15 @@
 
 .PHONY: scaffold scaffold-env help
 TEMPLATE_VERSION ?= v0.2.0
+# Used when rendering .github/workflows/ci.yml (reusable workflow from platform-idp)
+GITHUB_ORG ?= worldretouch
+PLATFORM_REF ?= main
 
 help:
 	@echo "Platform IDP"
 	@echo ""
 	@echo "  make scaffold RUNTIME=go SERVICE_NAME=my-service OUTPUT_DIR=../my-service"
+	@echo "  make scaffold ... GITHUB_ORG=myorg PLATFORM_REF=main   # optional: reusable CI target"
 	@echo "  make scaffold-env SERVICE_NAME=my-service ENV_REPO_DIR=../platform-env"
 	@echo ""
 	@echo "RUNTIME: rails | go | node | python"
@@ -36,6 +40,14 @@ _scaffold:
 		"$(OUTPUT_DIR)/service.yaml" > "$(OUTPUT_DIR)/service.yaml.tmp" && mv "$(OUTPUT_DIR)/service.yaml.tmp" "$(OUTPUT_DIR)/service.yaml"; \
 	fi
 	@printf "platform_template_version: %s\nruntime_template: %s-api\n" "$(TEMPLATE_VERSION)" "$(RUNTIME)" > "$(OUTPUT_DIR)/.platform-template-version"
+	@if [ -f "$(OUTPUT_DIR)/.github/workflows/ci.yml" ]; then \
+		sed -i.bak \
+			-e "s|__SERVICE_NAME__|$(SERVICE_NAME)|g" \
+			-e "s|__RUNTIME__|$(RUNTIME)|g" \
+			-e "s|__GITHUB_ORG__|$(GITHUB_ORG)|g" \
+			-e "s|__PLATFORM_REF__|$(PLATFORM_REF)|g" \
+			"$(OUTPUT_DIR)/.github/workflows/ci.yml" && rm -f "$(OUTPUT_DIR)/.github/workflows/ci.yml.bak"; \
+	fi
 	@echo "Scaffolded $(SERVICE_NAME) with $(RUNTIME) to $(OUTPUT_DIR)"
 	@echo "Next: cd $(OUTPUT_DIR) && make init && make run"
 
@@ -54,16 +66,9 @@ scaffold-env:
 		exit 1; \
 	fi
 	@for env in dev staging prod; do \
-		app_src="$(ENV_REPO_DIR)/environments/$$env/apps/orders-api.yaml"; \
-		val_src="$(ENV_REPO_DIR)/environments/$$env/values/orders-api.values.yaml"; \
-		app_dst="$(ENV_REPO_DIR)/environments/$$env/apps/$(SERVICE_NAME).yaml"; \
-		val_dst="$(ENV_REPO_DIR)/environments/$$env/values/$(SERVICE_NAME).values.yaml"; \
-		if [ ! -f "$$app_src" ] || [ ! -f "$$val_src" ]; then \
-			echo "Missing orders-api skeleton in $$env (expected $$app_src and $$val_src)."; \
-			exit 1; \
-		fi; \
-		if [ -f "$$app_dst" ] || [ -f "$$val_dst" ]; then \
-			echo "Refusing to overwrite existing files for $(SERVICE_NAME) in $$env (found $$app_dst or $$val_dst)."; \
+		if [ ! -f "$(ENV_REPO_DIR)/environments/$$env/apps/orders-api.yaml" ] || \
+		   [ ! -f "$(ENV_REPO_DIR)/environments/$$env/values/orders-api.values.yaml" ]; then \
+			echo "Missing orders-api skeleton in $$env. Run bootstrap-env-repo first."; \
 			exit 1; \
 		fi; \
 	done

@@ -1,0 +1,150 @@
+{
+  "identifier": "platform_deployment_status",
+  "title": "Deployment Status",
+  "icon": "DeployedAt",
+  "type": "dashboard",
+  "description": "Trạng thái ArgoCD: sync, health, environments",
+  "widgets": {
+    "id": "deployStatusRoot",
+    "type": "dashboard-widget",
+    "layout": [
+      {
+        "height": 400,
+        "columns": [
+          { "id": "totalApps", "size": 3 },
+          { "id": "appsSynced", "size": 3 },
+          { "id": "appsOutOfSync", "size": 3 },
+          { "id": "appsDegraded", "size": 3 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "appsByHealth", "size": 6 },
+          { "id": "appsByEnv", "size": 6 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "argoAppsTable", "size": 12 }
+        ]
+      }
+    ],
+    "widgets": [
+      {
+        "id": "totalApps",
+        "title": "Total ArgoCD Apps",
+        "type": "entities-number-chart",
+        "icon": "Git",
+        "blueprint": "argocd_app",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "appsSynced",
+        "title": "Synced",
+        "type": "entities-number-chart",
+        "icon": "Check",
+        "blueprint": "argocd_app",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" },
+            { "operator": "=", "value": "Synced", "property": "sync_status" }
+          ]
+        }
+      },
+      {
+        "id": "appsOutOfSync",
+        "title": "OutOfSync",
+        "type": "entities-number-chart",
+        "icon": "Alert",
+        "blueprint": "argocd_app",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" },
+            { "operator": "=", "value": "OutOfSync", "property": "sync_status" }
+          ]
+        }
+      },
+      {
+        "id": "appsDegraded",
+        "title": "Degraded",
+        "type": "entities-number-chart",
+        "icon": "Alert",
+        "blueprint": "argocd_app",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" },
+            { "operator": "=", "value": "Degraded", "property": "health_status" }
+          ]
+        }
+      },
+      {
+        "id": "appsByHealth",
+        "title": "Apps by Health Status",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" }
+          ]
+        },
+        "property": "property#health_status"
+      },
+      {
+        "id": "appsByEnv",
+        "title": "Apps by Environment",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" }
+          ]
+        },
+        "property": "relation#environment"
+      },
+      {
+        "id": "argoAppsTable",
+        "title": "All ArgoCD Applications",
+        "type": "table-entities-explorer",
+        "displayMode": "widget",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "argocd_app", "property": "$blueprint" }
+          ]
+        }
+      }
+    ]
+  }
+}

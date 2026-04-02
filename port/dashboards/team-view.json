@@ -1,0 +1,148 @@
+{
+  "identifier": "platform_team_view",
+  "title": "Team View",
+  "icon": "Team",
+  "type": "dashboard",
+  "description": "Phân bổ services theo team, ownership overview",
+  "widgets": {
+    "id": "teamViewRoot",
+    "type": "dashboard-widget",
+    "layout": [
+      {
+        "height": 400,
+        "columns": [
+          { "id": "totalTeams", "size": 4 },
+          { "id": "totalOwnedServices", "size": 4 },
+          { "id": "unownedServices", "size": 4 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "servicesByTeamPieChart", "size": 6 },
+          { "id": "servicesByRuntimeByTeam", "size": 6 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "teamsTable", "size": 12 }
+        ]
+      },
+      {
+        "height": 400,
+        "columns": [
+          { "id": "servicesOwnedTable", "size": 12 }
+        ]
+      }
+    ],
+    "widgets": [
+      {
+        "id": "totalTeams",
+        "title": "Total Teams",
+        "type": "entities-number-chart",
+        "icon": "Team",
+        "blueprint": "_team",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "_team", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "totalOwnedServices",
+        "title": "Services with Owner",
+        "type": "entities-number-chart",
+        "icon": "Microservice",
+        "blueprint": "api_service",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" },
+            { "operator": "isNotEmpty", "property": "$team" }
+          ]
+        }
+      },
+      {
+        "id": "unownedServices",
+        "title": "Unowned Services",
+        "type": "entities-number-chart",
+        "icon": "Alert",
+        "blueprint": "api_service",
+        "calculationBy": "entities",
+        "func": "count",
+        "measureTimeBy": "$createdAt",
+        "averageOf": "day",
+        "unit": "none",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" },
+            { "operator": "isEmpty", "property": "$team" }
+          ]
+        }
+      },
+      {
+        "id": "servicesByTeamPieChart",
+        "title": "Services by Team",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        },
+        "property": "relation#team"
+      },
+      {
+        "id": "servicesByRuntimeByTeam",
+        "title": "Services by Runtime",
+        "icon": "PieChart",
+        "type": "entities-pie-chart",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        },
+        "property": "property#runtime"
+      },
+      {
+        "id": "teamsTable",
+        "title": "All Teams",
+        "type": "table-entities-explorer",
+        "displayMode": "widget",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "_team", "property": "$blueprint" }
+          ]
+        }
+      },
+      {
+        "id": "servicesOwnedTable",
+        "title": "All Services (with Owner)",
+        "type": "table-entities-explorer",
+        "displayMode": "widget",
+        "dataset": {
+          "combinator": "and",
+          "rules": [
+            { "operator": "=", "value": "api_service", "property": "$blueprint" }
+          ]
+        }
+      }
+    ]
+  }
+}

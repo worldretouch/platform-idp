@@ -20,9 +20,10 @@ on:
           - python
           - rails
       domain:
-        description: "Business domain slug (e.g. orders) or DNS-style host (e.g. demo-api.com)"
-        required: true
+        description: "Business domain slug (e.g. orders) or DNS-style host (optional)"
+        required: false
         type: string
+        default: ""
       owner:
         description: "Owner team slug, e.g. platform-team"
         required: true
@@ -91,16 +92,93 @@ jobs:
       VISIBILITY: ${{ inputs.repo_visibility }}
       DEFAULT_BRANCH: ${{ inputs.default_branch }}
       CREATE_PR: ${{ inputs.create_pr }}
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      PORT_BASE_URL: ${{ secrets.PORT_BASE_URL != '' && secrets.PORT_BASE_URL || 'https://api.port.io' }}
+
     steps:
       - name: Checkout platform-idp
         uses: actions/checkout@v4
+
+      - name: Authenticate to Port API
+        id: port_auth
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${{ secrets.PORT_CLIENT_ID }}" || -z "${{ secrets.PORT_CLIENT_SECRET }}" ]]; then
+            echo "PORT_CLIENT_ID and PORT_CLIENT_SECRET secrets are required"
+            exit 1
+          fi
+
+          ACCESS_TOKEN=$(
+            curl -sS -X POST "${PORT_BASE_URL}/v1/auth/access_token" \
+              -H "Content-Type: application/json" \
+              -d "{\"clientId\":\"${{ secrets.PORT_CLIENT_ID }}\",\"clientSecret\":\"${{ secrets.PORT_CLIENT_SECRET }}\"}" \
+            | jq -r '.accessToken'
+          )
+
+          if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
+            echo "Failed to get Port access token"
+            exit 1
+          fi
+
+          echo "PORT_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Register Port run link
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: ${{ env.PORT_BASE_URL }}
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          statusLabel: "Scaffolding started"
+          link: |
+            ["${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"]
+
+      - name: Start log stream in Port
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            local message="$1"
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$message" '{message: $message}')" \
+              > /dev/null
+          }
+
+          port_log "Workflow started for service '${SERVICE_NAME}'"
+          port_log "Runtime='${RUNTIME}', domain='${DOMAIN}', owner='${OWNER}', visibility='${VISIBILITY}', default_branch='${DEFAULT_BRANCH}', create_pr='${CREATE_PR}'"
 
       - name: Create GitHub repository
         shell: bash
         run: |
           set -euo pipefail
+
+          port_log() {
+            local message="$1"
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$message" '{message: $message}')" \
+              > /dev/null
+          }
+
+          port_log "Creating GitHub repository ${ORG}/${SERVICE_NAME}"
+
           if [[ -z "${GH_TOKEN}" ]]; then
-            echo "GH_ORG_TOKEN secret is required"; exit 1
+            port_log "GH_ORG_TOKEN secret is missing"
+            echo "GH_ORG_TOKEN secret is required"
+            exit 1
+          fi
+
+          if gh repo view "${ORG}/${SERVICE_NAME}" >/dev/null 2>&1; then
+            port_log "Repository ${ORG}/${SERVICE_NAME} already exists"
+            echo "Repository ${ORG}/${SERVICE_NAME} already exists"
+            exit 1
           fi
 
           if [[ "$VISIBILITY" == "public" ]]; then
@@ -109,14 +187,33 @@ jobs:
             gh repo create "${ORG}/${SERVICE_NAME}" --private --disable-issues --disable-wiki --description "${SERVICE_DESCRIPTION:-Scaffolded from platform-idp}"
           fi
 
+          port_log "Repository ${ORG}/${SERVICE_NAME} created successfully"
+
       - name: Render service source from templates
         shell: bash
         run: |
           set -euo pipefail
+
+          port_log() {
+            local message="$1"
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$message" '{message: $message}')" \
+              > /dev/null
+          }
+
+          port_log "Rendering scaffold template for runtime '${RUNTIME}'"
+
           make scaffold \
             RUNTIME="${RUNTIME}" \
             SERVICE_NAME="${SERVICE_NAME}" \
-            OUTPUT_DIR="/tmp/scaffold-output"
+            OUTPUT_DIR="/tmp/scaffold-output" \
+            GITHUB_ORG="${ORG}" \
+            PLATFORM_REF="main"
+
+          TEMPLATE_VERSION=$(grep '^platform_template_version:' /tmp/scaffold-output/.platform-template-version | awk '{print $2}')
+          echo "TEMPLATE_VERSION=${TEMPLATE_VERSION}" >> "$GITHUB_ENV"
 
           python3 - <<'PY'
           import os
@@ -126,8 +223,10 @@ jobs:
               f"service_name: {os.environ['SERVICE_NAME']}",
               f"runtime: {os.environ['RUNTIME']}",
               f"owner: {os.environ['OWNER']}",
-              f"domain: {os.environ['DOMAIN']}",
           ]
+          domain = (os.environ.get("DOMAIN") or "").strip()
+          if domain:
+              lines.append(f"domain: {domain}")
           description = os.environ.get("SERVICE_DESCRIPTION", "").strip()
           if description:
               lines.extend(["description: |", f"  {description}"])
@@ -143,10 +242,25 @@ jobs:
           Path("/tmp/scaffold-output/service.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
           PY
 
+          port_log "Scaffold source rendered successfully"
+          port_log "Generated service.yaml in /tmp/scaffold-output"
+
       - name: Push scaffolded code to new repository
         shell: bash
         run: |
           set -euo pipefail
+
+          port_log() {
+            local message="$1"
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$message" '{message: $message}')" \
+              > /dev/null
+          }
+
+          port_log "Preparing git repository for initial push"
+
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
@@ -157,6 +271,8 @@ jobs:
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${ORG}/${SERVICE_NAME}.git"
 
           if [[ "$CREATE_PR" == "true" ]]; then
+            port_log "CREATE_PR=true, creating bootstrap commit and scaffold PR"
+
             git checkout -b "${DEFAULT_BRANCH}"
             git commit --allow-empty -m "chore: bootstrap repository"
             git push -u origin "${DEFAULT_BRANCH}"
@@ -173,15 +289,82 @@ jobs:
               --head "scaffold/initial-template" \
               --title "feat: scaffold ${SERVICE_NAME} from platform-idp template" \
               --body "Initial scaffold generated from platform template for runtime \`${RUNTIME}\`."
+
+            port_log "Pull request created successfully for ${ORG}/${SERVICE_NAME}"
           else
+            port_log "CREATE_PR=false, pushing scaffold directly to ${DEFAULT_BRANCH}"
+
             git checkout -b "${DEFAULT_BRANCH}"
             cp -R /tmp/scaffold-output/. .
             git add .
             git commit -m "feat: scaffold ${SERVICE_NAME} from platform-idp template"
             git push -u origin "${DEFAULT_BRANCH}"
+
+            port_log "Scaffold code pushed directly to branch ${DEFAULT_BRANCH}"
           fi
 
           gh api -X PATCH "repos/${ORG}/${SERVICE_NAME}" -f default_branch="${DEFAULT_BRANCH}" || true
+          port_log "Default branch updated to ${DEFAULT_BRANCH}"
+
+      - name: Create api_service entity in Port Catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_log() {
+            local message="$1"
+            curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+              -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg message "$message" '{message: $message}')" \
+              > /dev/null
+          }
+
+          port_log "Creating entity '${SERVICE_NAME}' in api_service catalog"
+
+          ENTITY_PAYLOAD=$(jq -nc \
+            --arg id "$SERVICE_NAME" \
+            --arg title "$SERVICE_NAME" \
+            --arg service_name "$SERVICE_NAME" \
+            --arg runtime "$RUNTIME" \
+            --arg domain "${DOMAIN:-}" \
+            --arg owner "$OWNER" \
+            --arg repo_url "https://github.com/${ORG}/${SERVICE_NAME}" \
+            --argjson has_database "${DEP_DB}" \
+            --argjson has_redis "${DEP_REDIS}" \
+            --arg template_version "${TEMPLATE_VERSION:-}" \
+            '{
+              identifier: $id,
+              title: $title,
+              properties: (
+                {
+                  service_name: $service_name,
+                  runtime: $runtime,
+                  owner: $owner,
+                  repo_url: $repo_url,
+                  has_database: $has_database,
+                  has_redis: $has_redis,
+                  platform_template_version: $template_version
+                }
+                | if ($domain | length) > 0 then . + {domain: $domain} else . end
+              ),
+              relations: {
+                team: $owner
+              }
+            }')
+
+          HTTP_CODE=$(curl -sS -o /tmp/port-entity-response.json -w "%{http_code}" \
+            -X POST "${PORT_BASE_URL}/v1/blueprints/api_service/entities?upsert=true" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$ENTITY_PAYLOAD")
+
+          if [[ "$HTTP_CODE" =~ ^2 ]]; then
+            port_log "Entity '${SERVICE_NAME}' created/updated in Catalog (HTTP ${HTTP_CODE})"
+          else
+            port_log "Failed to create entity (HTTP ${HTTP_CODE}): $(cat /tmp/port-entity-response.json)"
+            echo "Warning: entity creation failed but scaffold succeeded"
+          fi
 
       - name: Workflow summary
         shell: bash
@@ -195,26 +378,61 @@ jobs:
             echo "- create_pr: ${CREATE_PR}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # ✅ Report SUCCESS
-      - name: Report success to Port
+      - name: Finalize success in Port
         if: success()
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).runId }}
-          status: "SUCCESS"
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      # ❌ Report FAILURE
-      - name: Report failure to Port
+          SUMMARY=$(cat <<EOF
+          Scaffold completed successfully
+
+          Repository: https://github.com/${ORG}/${SERVICE_NAME}
+          Runtime: ${RUNTIME}
+          Domain: ${DOMAIN}
+          Owner: ${OWNER}
+          create_pr: ${CREATE_PR}
+          EOF
+          )
+
+          curl -sS -X PATCH "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg status "SUCCESS" \
+              --arg statusLabel "Scaffold completed successfully" \
+              --arg summary "$SUMMARY" \
+              --arg link "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{status: $status, statusLabel: $statusLabel, summary: $summary, link: [$link]}')"
+
+          curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg message "Workflow completed successfully" \
+              --arg terminationStatus "SUCCESS" \
+              --arg statusLabel "Done" \
+              '{message: $message, terminationStatus: $terminationStatus, statusLabel: $statusLabel}')"
+
+      - name: Finalize failure in Port
         if: failure()
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).runId }}
-          status: "FAILURE"
-          logMessage: |
-            Workflow failed at: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} Check the logs for details.
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -sS -X PATCH "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg statusLabel "Scaffold failed" \
+              --arg link "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{statusLabel: $statusLabel, link: [$link]}')"
+
+          curl -sS -X POST "${PORT_BASE_URL}/v1/actions/runs/${PORT_RUN_ID}/logs" \
+            -H "Authorization: Bearer ${PORT_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg message "Workflow failed. Check GitHub Actions logs for details." \
+              --arg terminationStatus "FAILURE" \
+              --arg statusLabel "Failed" \
+              '{message: $message, terminationStatus: $terminationStatus, statusLabel: $statusLabel}')"

@@ -37,11 +37,10 @@
         "owner": {
           "type": "string",
           "title": "Owner",
-          "description": "Team slug, kebab-case, e.g. dev-team",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-          "default": "dev-team",
-          "minLength": 2,
-          "maxLength": 63
+          "description": "Select the team that owns this service",
+          "format": "entity",
+          "blueprint": "_team",
+          "default": "dev-team"
         },
         "domain": {
           "type": "string",
@@ -75,7 +74,7 @@
         "github_org": {
           "type": "string",
           "title": "GitHub Org/User",
-          "description": "GitHub login (leave empty to use repository owner)",
+          "description": "Leave empty to use the org where platform-idp lives",
           "pattern": "^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$",
           "maxLength": 39
         },
@@ -107,7 +106,6 @@
       "required": [
         "service_name",
         "runtime",
-        "domain",
         "owner"
       ],
       "order": [
@@ -135,10 +133,21 @@
       "repo": "platform-idp",
       "workflow": "scaffold-service.yml",
       "ref": "main",
-      "reportWorkflowStatus": true,
+      "reportWorkflowStatus": false,
       "workflowInputs": {
-        "{{ spreadValue() }}": "{{ .inputs }}",
-        "port_context": "{\"runId\": \"{{ .run.id }}\", \"blueprint\": \"{{ .action.blueprint }}\"}"
+        "service_name": "{{ .inputs.service_name }}",
+        "runtime": "{{ .inputs.runtime }}",
+        "owner": "{{ .inputs.owner.identifier }}",
+        "domain": "{{ .inputs.domain }}",
+        "description": "{{ .inputs.description }}",
+        "expose_http": "{{ .inputs.expose_http }}",
+        "dependencies_database": "{{ .inputs.dependencies_database }}",
+        "dependencies_redis": "{{ .inputs.dependencies_redis }}",
+        "github_org": "{{ .inputs.github_org }}",
+        "repo_visibility": "{{ .inputs.repo_visibility }}",
+        "default_branch": "{{ .inputs.default_branch }}",
+        "create_pr": "{{ .inputs.create_pr }}",
+        "port_context": "{\"runId\":\"{{ .run.id }}\",\"blueprint\":\"{{ .action.blueprint }}\",\"action\":\"{{ .action.identifier }}\"}"
       }
     }
   },

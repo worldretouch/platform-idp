@@ -1,0 +1,42 @@
+{
+  "identifier": "scale_service",
+  "title": "Scale Service",
+  "icon": "Deployment",
+  "trigger": {
+    "type": "self-service",
+    "operation": "DAY-2",
+    "blueprintIdentifier": "api_service",
+    "userInputs": {
+      "properties": {
+        "environment": {
+          "type": "string",
+          "title": "Environment",
+          "enum": ["dev", "staging", "prod"],
+          "default": "dev"
+        },
+        "replicas": {
+          "type": "number",
+          "title": "Replicas",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1
+        }
+      },
+      "required": ["environment", "replicas"]
+    }
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "org": "worldretouch",
+    "repo": "platform-idp",
+    "workflow": "scale-service.yml",
+    "workflowInputs": {
+      "service_name": "{{ .entity.properties.service_name }}",
+      "environment": "{{ .inputs.environment }}",
+      "replicas": "{{ .inputs.replicas }}",
+      "port_context": "{\"runId\":\"{{ .run.id }}\"}"
+    },
+    "reportWorkflowStatus": true
+  },
+  "requiredApproval": false
+}

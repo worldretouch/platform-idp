@@ -6,8 +6,7 @@
   "required": [
     "service_name",
     "runtime",
-    "owner",
-    "domain"
+    "owner"
   ],
   "properties": {
     "service_name": {
@@ -29,8 +28,11 @@
       "minLength": 1
     },
     "domain": {
-      "type": "string",
-      "minLength": 1
+      "description": "Business domain slug or DNS host (optional)",
+      "anyOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
     },
     "description": {
       "type": "string"
@@ -46,6 +48,9 @@
       "type": "object",
       "properties": {
         "database": {
+          "type": "boolean"
+        },
+        "redis": {
           "type": "boolean"
         },
         "cache": {

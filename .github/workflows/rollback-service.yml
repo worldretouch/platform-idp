@@ -1,0 +1,65 @@
+name: Rollback Service
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        type: string
+      service_name:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    env:
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      PORT_BASE_URL: "https://api.port.io"
+    steps:
+      - name: Get Port token
+        id: port_token
+        run: |
+          TOKEN=$(curl -s -X POST "$PORT_BASE_URL/v1/auth/access_token" \
+            -H "Content-Type: application/json" \
+            -d '{"clientId":"${{ secrets.PORT_CLIENT_ID }}","clientSecret":"${{ secrets.PORT_CLIENT_SECRET }}"}' \
+            | jq -r '.accessToken')
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Log start
+        run: |
+          curl -sS -X POST "$PORT_BASE_URL/v1/actions/runs/$PORT_RUN_ID/logs" \
+            -H "Authorization: Bearer ${{ steps.port_token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{"message":"Rolling back ${{ inputs.service_name }} in platform-${{ inputs.environment }}"}'
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Rollback to previous revision
+        run: |
+          kubectl rollout undo deployment/${{ inputs.service_name }} \
+            -n platform-${{ inputs.environment }}
+          kubectl rollout status deployment/${{ inputs.service_name }} \
+            -n platform-${{ inputs.environment }} --timeout=120s
+
+      - name: Log success
+        if: success()
+        run: |
+          curl -sS -X PATCH "$PORT_BASE_URL/v1/actions/runs/$PORT_RUN_ID" \
+            -H "Authorization: Bearer ${{ steps.port_token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"SUCCESS","message":"Service ${{ inputs.service_name }} rolled back in platform-${{ inputs.environment }}"}'
+
+      - name: Log failure
+        if: failure()
+        run: |
+          curl -sS -X PATCH "$PORT_BASE_URL/v1/actions/runs/$PORT_RUN_ID" \
+            -H "Authorization: Bearer ${{ steps.port_token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"FAILURE","message":"Failed to rollback ${{ inputs.service_name }}"}'
